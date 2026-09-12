@@ -242,7 +242,7 @@ export function evaluateServiceArea(input: ServiceAreaInput): ServiceAreaResult 
   const state = normalizeState(input.state);
   const city = input.city.trim();
 
-  if (zip.length !== 5 || !city || !state) {
+  if (zip.length !== 5 || !city || !input.state.trim()) {
     return {
       ok: false,
       code: "invalid",
@@ -254,7 +254,7 @@ export function evaluateServiceArea(input: ServiceAreaInput): ServiceAreaResult 
   const zipOk = isMetroZip(zip);
   const cityOk = isMetroCity(city);
 
-  if (!zipOk || !cityOk) {
+  if (!state || !zipOk || !cityOk) {
     return { ok: false, code: "out_of_area", message: OUT_OF_AREA_MESSAGE };
   }
 

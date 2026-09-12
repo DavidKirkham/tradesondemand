@@ -66,15 +66,16 @@ describe("KC metro gate", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("requires MO or KS", () => {
+  it("rejects non-metro states with the KC-only message", () => {
     const result = evaluateServiceArea({
-      zip: "64111",
-      city: "Kansas City",
-      state: "IL",
+      zip: "80202",
+      city: "Denver",
+      state: "CO",
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.code).toBe("invalid");
+      expect(result.code).toBe("out_of_area");
+      expect(result.message).toMatch(/Kansas City metro/i);
     }
   });
 });
