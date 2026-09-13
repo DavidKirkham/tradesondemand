@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
 import { ContractorJobActions } from "@/components/contractor-app/ContractorJobActions";
 import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
+import { statusLabel } from "@/lib/booking";
+import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
 import { jobFitsContractor } from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
-import { statusLabel } from "@/lib/booking";
 import { formatPhone, telHref } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
@@ -21,8 +22,19 @@ export default async function ContractorJobDetailPage({
   if (!contractor) return <ContractorLogin />;
 
   const { id } = await params;
-  const job = await prisma.booking.findUnique({ where: { id } });
+  const job = await prisma.booking.findUnique({ where: { id }, omit: BOOKING_SMS_OMIT });
   if (!job) notFound();
+
+  let smsStatus: string | null = null;
+  try {
+    const sms = await prisma.booking.findUnique({
+      where: { id },
+      select: { customerSmsStatus: true },
+    });
+    smsStatus = sms?.customerSmsStatus ?? null;
+  } catch (error) {
+    if (!isMissingBookingSmsColumn(error)) throw error;
+  }
 
   const assigned = job.contractorId === contractor.id;
   const available = !job.contractorId && jobFitsContractor(job, contractor);
@@ -85,7 +97,7 @@ export default async function ContractorJobDetailPage({
           id={job.id}
           status={job.status}
           assigned={assigned}
-          smsStatus={job.customerSmsStatus}
+          smsStatus={smsStatus}
         />
       </div>
     </ContractorAppShell>

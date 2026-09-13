@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
 import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
+import { statusLabel } from "@/lib/booking";
+import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { jobFitsContractor } from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
-import { statusLabel } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
@@ -18,6 +19,7 @@ export default async function ContractorHomePage() {
     prisma.booking.findMany({
       where: { contractorId: contractor.id },
       orderBy: { createdAt: "desc" },
+      omit: BOOKING_SMS_OMIT,
     }),
     prisma.booking.findMany({
       where: {
@@ -25,6 +27,7 @@ export default async function ContractorHomePage() {
         status: { notIn: ["COMPLETED", "CANCELLED"] },
       },
       orderBy: { createdAt: "desc" },
+      omit: BOOKING_SMS_OMIT,
     }),
   ]);
 

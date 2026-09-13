@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { jobFitsContractor } from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +16,7 @@ export async function GET() {
     prisma.booking.findMany({
       where: { contractorId: contractor.id },
       orderBy: { createdAt: "desc" },
+      omit: BOOKING_SMS_OMIT,
     }),
     prisma.booking.findMany({
       where: {
@@ -22,6 +24,7 @@ export async function GET() {
         status: { notIn: ["COMPLETED", "CANCELLED"] },
       },
       orderBy: { createdAt: "desc" },
+      omit: BOOKING_SMS_OMIT,
     }),
   ]);
 

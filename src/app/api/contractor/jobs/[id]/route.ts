@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prismaFailureResponse } from "@/lib/api-errors";
+import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
 import { jobFitsContractor, isContractorJobStatus } from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
 import { prisma } from "@/lib/prisma";
@@ -36,7 +37,7 @@ async function applyContractorJobPatch(
   contractor: { id: string; businessName: string; tradesJson: string; serviceArea: string },
   body: { status?: string; note?: string; claim?: boolean; eta?: string },
 ) {
-  const booking = await prisma.booking.findUnique({ where: { id } });
+  const booking = await prisma.booking.findUnique({ where: { id }, omit: BOOKING_SMS_OMIT });
   if (!booking) return NextResponse.json({ error: "Job not found." }, { status: 404 });
 
   const assigned = booking.contractorId === contractor.id;
@@ -95,6 +96,7 @@ async function applyContractorJobPatch(
         status: body.status,
         events: { create: { status: body.status, note: body.note?.trim() || null } },
       },
+      omit: BOOKING_SMS_OMIT,
     });
   }
 
@@ -103,7 +105,7 @@ async function applyContractorJobPatch(
     | undefined;
 
   if (eta) {
-    const current = await prisma.booking.findUnique({ where: { id } });
+    const current = await prisma.booking.findUnique({ where: { id }, omit: BOOKING_SMS_OMIT });
     if (!current || current.contractorId !== contractor.id) {
       return NextResponse.json({ error: "Accept the job before texting the client." }, { status: 400 });
     }
@@ -113,29 +115,34 @@ async function applyContractorJobPatch(
       eta,
     });
     const result = await sendCustomerSms(current.customerPhone, text);
-    await prisma.booking.update({
-      where: { id },
-      data: {
-        customerSmsStatus: result.status,
-        customerSmsBody: text,
-        customerSmsError: result.error ?? null,
-        events: {
-          create: {
-            status: current.status,
-            note:
-              result.status === "SENT"
-                ? `Texted the client: ${eta}`
-                : result.status === "SKIPPED"
-                  ? `ETA saved; SMS skipped (Twilio not configured): ${eta}`
-                  : `ETA saved; SMS failed: ${result.error ?? "unknown"}`,
+    try {
+      await prisma.booking.update({
+        where: { id },
+        data: {
+          customerSmsStatus: result.status,
+          customerSmsBody: text,
+          customerSmsError: result.error ?? null,
+          events: {
+            create: {
+              status: current.status,
+              note:
+                result.status === "SENT"
+                  ? `Texted the client: ${eta}`
+                  : result.status === "SKIPPED"
+                    ? `ETA saved; SMS skipped (Twilio not configured): ${eta}`
+                    : `ETA saved; SMS failed: ${result.error ?? "unknown"}`,
+            },
           },
         },
-      },
-    });
+        omit: BOOKING_SMS_OMIT,
+      });
+    } catch (error) {
+      if (!isMissingBookingSmsColumn(error)) throw error;
+    }
     sms = { status: result.status, body: text, error: result.error ?? null };
   }
 
-  const updated = await prisma.booking.findUnique({ where: { id } });
+  const updated = await prisma.booking.findUnique({ where: { id }, omit: BOOKING_SMS_OMIT });
   return NextResponse.json({
     booking: updated,
     sms,
