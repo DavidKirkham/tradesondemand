@@ -30,12 +30,42 @@ export function describeContractorEtaSms(sms: ContractorEtaSmsPayload): string {
   return `Arrival note saved.${persist}`;
 }
 
+type TwilioRequestAuth = {
+  accountSid: string;
+  username: string;
+  password: string;
+};
+
+function twilioApiKeyAuth(env: Record<string, string | undefined>): { username: string; password: string } | null {
+  const username = env.TWILIO_API_KEY_SID?.trim() ?? "";
+  const password = env.TWILIO_API_KEY_SECRET?.trim() ?? "";
+  if (!username || !password) return null;
+  return { username, password };
+}
+
+function twilioAuthTokenAuth(env: Record<string, string | undefined>): { username: string; password: string } | null {
+  const username = env.TWILIO_ACCOUNT_SID?.trim() ?? "";
+  const password = env.TWILIO_AUTH_TOKEN?.trim() ?? "";
+  if (!username || !password) return null;
+  return { username, password };
+}
+
+/** Account SID stays in the Messages URL. API Key SID+secret win for Basic auth when both are set. */
+export function getTwilioRequestAuth(
+  env: Record<string, string | undefined> = process.env,
+): TwilioRequestAuth | null {
+  const accountSid = env.TWILIO_ACCOUNT_SID?.trim() ?? "";
+  if (!accountSid || !env.TWILIO_FROM_NUMBER?.trim()) return null;
+  const credentials = twilioApiKeyAuth(env) ?? twilioAuthTokenAuth(env);
+  if (!credentials) return null;
+  return { accountSid, ...credentials };
+}
+
 export function isTwilioConfigured(env: Record<string, string | undefined> = process.env): boolean {
-  return Boolean(
-    env.TWILIO_ACCOUNT_SID?.trim() &&
-      env.TWILIO_AUTH_TOKEN?.trim() &&
-      env.TWILIO_FROM_NUMBER?.trim(),
-  );
+  const from = Boolean(env.TWILIO_FROM_NUMBER?.trim());
+  const apiKey = Boolean(env.TWILIO_API_KEY_SID?.trim() && env.TWILIO_API_KEY_SECRET?.trim());
+  const authToken = Boolean(env.TWILIO_ACCOUNT_SID?.trim() && env.TWILIO_AUTH_TOKEN?.trim());
+  return from && (apiKey || authToken);
 }
 
 export function buildAcceptEtaSms(input: {
@@ -98,16 +128,19 @@ export async function sendCustomerSms(to: string, body: string): Promise<SmsResu
     return { status: "SKIPPED", error: "Customer or Twilio from-number is not a valid US phone." };
   }
 
-  const sid = process.env.TWILIO_ACCOUNT_SID!.trim();
-  const token = process.env.TWILIO_AUTH_TOKEN!.trim();
-  const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Messages.json`;
+  const auth = getTwilioRequestAuth();
+  if (!auth) {
+    return { status: "SKIPPED", error: "Twilio Account SID is required for the Messages API path." };
+  }
+
+  const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(auth.accountSid)}/Messages.json`;
   const params = new URLSearchParams({ To: dest, From: from, Body: body });
 
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
+        Authorization: `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString("base64")}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: params,
