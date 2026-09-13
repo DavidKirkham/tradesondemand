@@ -61,7 +61,8 @@ export function ContractorJobActions({
         </button>
       ) : closed ? (
         <p className="rounded-2xl border border-dashed border-line px-4 py-3 text-sm text-muted">
-          This job is closed. You can still text the customer from here or SMS.
+          This job is closed. Send or update the time & materials invoice above, or text the
+          customer from here.
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-2">

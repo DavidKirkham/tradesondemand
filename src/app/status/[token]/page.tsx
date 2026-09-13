@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CallButton } from "@/components/CallButton";
 import { statusDetail, statusLabel } from "@/lib/booking";
+import { InvoiceBreakdown } from "@/components/invoice/InvoiceBreakdown";
+import { customerCanSeeInvoice } from "@/lib/invoice";
+import { loadBookingInvoice } from "@/lib/invoice-columns";
 import { formatUsd } from "@/lib/money";
 import { paymentStatusLabel, paymentTypeLabel } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +34,9 @@ export default async function StatusDetailPage({
 
   if (!booking) notFound();
 
+  const invoiceRecord = await loadBookingInvoice(booking.id);
+  const invoice =
+    invoiceRecord && customerCanSeeInvoice(invoiceRecord.status) ? invoiceRecord : null;
   const trade = getTrade(booking.trade);
   const contractorLabel = booking.contractor
     ? booking.contractor.businessName
@@ -93,6 +99,29 @@ export default async function StatusDetailPage({
             <p className="mt-2 text-xs text-muted">
               Processed by Trademark Walls for Trades on Demand. The contractor never sees your card.
             </p>
+          </div>
+        ) : null}
+        {invoice ? (
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="stamp text-[0.65rem] text-muted">Invoice</p>
+            <div className="mt-2">
+              <InvoiceBreakdown
+                publicId={invoice.publicId}
+                status={invoice.status}
+                lines={invoice.lines}
+                laborCents={invoice.laborCents}
+                materialsCents={invoice.materialsCents}
+                subtotalCents={invoice.subtotalCents}
+                depositPaidCents={invoice.depositPaidCents}
+                amountDueCents={invoice.amountDueCents}
+                note={invoice.note}
+              />
+            </div>
+            {invoice.amountDueCents > 0 ? (
+              <p className="mt-2 text-xs text-muted">
+                Sign in at /account to pay the remaining balance to Trades on Demand.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

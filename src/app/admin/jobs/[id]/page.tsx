@@ -9,6 +9,8 @@ import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
+import { InvoiceBreakdown } from "@/components/invoice/InvoiceBreakdown";
+import { loadBookingInvoice } from "@/lib/invoice-columns";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
@@ -78,6 +80,7 @@ async function JobDetail({ id }: { id: string }) {
     publicId: row.publicId,
     trades: parseTradesJson(row.tradesJson),
   }));
+  const invoice = await loadBookingInvoice(job.id);
 
   return (
     <div className="space-y-6">
@@ -142,6 +145,25 @@ async function JobDetail({ id }: { id: string }) {
           <p className="mt-3 text-sm text-navy">{job.problem}</p>
         </div>
       </section>
+
+      {invoice ? (
+        <section className="rounded-2xl border border-line bg-paper p-5">
+          <h2 className="font-display text-xl text-navy">Invoice</h2>
+          <div className="mt-3">
+            <InvoiceBreakdown
+              publicId={invoice.publicId}
+              status={invoice.status}
+              lines={invoice.lines}
+              laborCents={invoice.laborCents}
+              materialsCents={invoice.materialsCents}
+              subtotalCents={invoice.subtotalCents}
+              depositPaidCents={invoice.depositPaidCents}
+              amountDueCents={invoice.amountDueCents}
+              note={invoice.note}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-line bg-paper p-5">
         <div className="flex items-center justify-between gap-3">

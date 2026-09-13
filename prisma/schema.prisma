@@ -36,6 +36,7 @@ model Booking {
   updatedAt       DateTime      @updatedAt
   events          StatusEvent[]
   payments        Payment[]
+  invoice         Invoice?
 }
 
 model StatusEvent {
@@ -78,6 +79,7 @@ model Contractor {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   bookings           Booking[]
+  invoices           Invoice[]
   passwordReset      ContractorPasswordReset?
   pushSubscriptions  ContractorPushSubscription[]
 }
@@ -140,6 +142,49 @@ model Payment {
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
+  invoice                 Invoice?
+
   @@index([bookingId])
   @@index([customerId])
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  publicId         String        @unique
+  bookingId        String        @unique
+  booking          Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  contractorId     String?
+  contractor       Contractor?   @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  paymentId        String?       @unique
+  payment          Payment?      @relation(fields: [paymentId], references: [id])
+  status           String        @default("DRAFT")
+  laborHours       String?
+  laborRateCents   Int           @default(0)
+  laborCents       Int           @default(0)
+  materialsCents   Int           @default(0)
+  subtotalCents    Int
+  depositPaidCents Int           @default(0)
+  amountDueCents   Int
+  note             String?
+  sentAt           DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  lines            InvoiceLine[]
+
+  @@index([contractorId])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  kind        String
+  description String
+  quantity    String
+  unitCents   Int
+  amountCents Int
+  sortOrder   Int     @default(0)
+
+  @@index([invoiceId])
 }

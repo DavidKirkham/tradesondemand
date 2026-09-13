@@ -1,3 +1,4 @@
+import { formatUsd } from "./money";
 import { formatPhone, getDispatchPhone, isReservedUsFictionPhone, toE164Us } from "./phone";
 
 export type SmsSendStatus = "SENT" | "SKIPPED" | "FAILED";
@@ -82,6 +83,36 @@ export function buildContractorPasswordResetSms(input: {
   resetUrl: string;
 }): string {
   return `Trades on Demand password reset code: ${input.code}. Or open ${input.resetUrl} Expires in 20 min. Ignore if you did not ask.`;
+}
+
+export function buildInvoiceSms(input: {
+  businessName: string;
+  publicId: string;
+  amountDueCents: number;
+  payUrl: string;
+}): string {
+  const due =
+    input.amountDueCents > 0
+      ? `Balance due to TOD: ${formatUsd(input.amountDueCents)}. View and pay: ${input.payUrl}`
+      : `The deposit already covers the work. View the invoice: ${input.payUrl}`;
+  return `${input.businessName} sent a Trades on Demand invoice for job ${input.publicId}. ${due} Call ${formatPhone(getDispatchPhone())} if you need the KC desk.`;
+}
+
+export function describeInvoiceSms(sms: ContractorEtaSmsPayload): string {
+  const persist = sms.persistSkipped
+    ? " SMS status was not stored (database is missing SMS columns)."
+    : "";
+  if (sms.status === "SENT") {
+    return `Invoice saved. Customer texted with a link to pay TOD.${persist}`;
+  }
+  const reason = sms.error?.trim() || "No further detail.";
+  if (sms.status === "SKIPPED") {
+    return `Invoice saved. SMS skipped: ${reason}${persist}`;
+  }
+  if (sms.status === "FAILED") {
+    return `Invoice saved. SMS did not send: ${reason}${persist}`;
+  }
+  return `Invoice saved.${persist}`;
 }
 
 export function buildContractorCustomerSms(input: {

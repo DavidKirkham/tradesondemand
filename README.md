@@ -29,6 +29,8 @@ Customers pay **Trades on Demand** for deposits, trip minimums, and later job ba
 
 `Payment` records belong to TOD (`bookingId`, amount, `DEPOSIT` | `BALANCE` | `ADJUSTMENT`, `PENDING` | `PAID` | `REFUNDED`, Stripe session/intent ids). The Stripe webhook is the source of truth for paid. Ops can still mark paid/refunded. Customer `/account` and job status show receipts + session id, not card numbers.
 
+After work is done, the assigned contractor sends a **time & materials invoice** (`Invoice` + `InvoiceLine` on the booking). Labor hours use the shop’s trade rate; materials are description + cost. Paid TOD deposits are credited; the remaining `amountDueCents` becomes a pending `BALANCE` payment. The customer sees the invoice on `/account/jobs/<id>` and pays through the same Stripe Checkout. Twilio texts a link to that page when the invoice is sent. Contractors never collect cards.
+
 ## Stripe Checkout (Phase 1)
 
 Platform merchant of record: **Trademark Walls** sandbox (test mode). Do **not** use Stripe Connect `destination` / `transfer_data`. Checkout and `/api/stripe/webhook` read **only** `process.env` — there is no hardcoded secret key.
@@ -105,6 +107,7 @@ Prisma expects these folders, in order:
 | `prisma/migrations/20260913220000_contractor_password_reset` | `ContractorPasswordReset` (SMS forgot-password token + code hashes) |
 | `prisma/migrations/20260913230000_customer_password` | `Customer.passwordHash`, `Customer.sessionToken`, SMS reset code columns |
 | `prisma/migrations/20260913240000_contractor_push_subscription` | `ContractorPushSubscription` (Web Push endpoints per approved shop) |
+| `prisma/migrations/20260913320000_job_invoice` | `Invoice` + `InvoiceLine` (contractor T&M invoice, optional `paymentId` to the TOD balance; `contractorId` SET NULL on shop delete) |
 
 Exact production command (`prisma migrate deploy` via the env wrapper):
 
@@ -187,7 +190,7 @@ Pending / rejected shops never appear in the picker. Cancelled jobs cannot be as
 3. Type the **exact business name** (case-insensitive) and confirm. `DELETE /api/admin/contractors/<id>` requires the same admin cookie as the rest of `/admin`.
 4. After delete, you land back on the subcontractors list with a success banner.
 
-**Booking rule:** open jobs (`RECEIVED`, `DISPATCHED`, `EN_ROUTE`, `ON_SITE`) **block** delete so active or unpaid work is not silently unassigned. Reassign, complete, or cancel those jobs first. Completed and cancelled jobs stay on the books with `contractorId` set to `null`. Payments stay on the booking. `ContractorPasswordReset` and `ContractorPushSubscription` rows cascade. The shop’s `loginToken` / `sessionToken` / password hash go away with the contractor row. There is no Invoice model in v1.
+**Booking rule:** open jobs (`RECEIVED`, `DISPATCHED`, `EN_ROUTE`, `ON_SITE`) **block** delete so active or unpaid work is not silently unassigned. Reassign, complete, or cancel those jobs first. Completed and cancelled jobs stay on the books with `contractorId` set to `null`. Payments stay on the booking. Time & materials `Invoice` rows also stay on those jobs with `Invoice.contractorId` set to `null` (same history rule — `ON DELETE SET NULL`, not restrict). `ContractorPasswordReset` and `ContractorPushSubscription` rows cascade. The shop’s `loginToken` / `sessionToken` / password hash go away with the contractor row.
 
 ### Delete a job
 
@@ -196,7 +199,7 @@ Pending / rejected shops never appear in the picker. Cancelled jobs cannot be as
 3. Type the **public job ID** (case-insensitive, e.g. `TOD-ABC123`) and confirm. `DELETE /api/admin/bookings/<id>` requires the same admin cookie as the rest of `/admin`. Unauthenticated callers get **401**.
 4. After delete, you land back on the jobs list with a success banner.
 
-**Payment / SMS rule:** `PAID` invoices **block** delete so Stripe ledger rows are not silently cascaded. Open Stripe Checkout sessions (`PENDING` + `stripeCheckoutSessionId`) also **block**, because a customer could still complete payment after the job vanished. Refund paid items or let the session expire first. Allowed jobs cascade `StatusEvent` rows and remaining `Payment` rows (`PENDING` without a session, or `REFUNDED`). Client SMS fields live on the booking and go away with it. Job status itself does not block — spam or cancelled tickets can be removed.
+**Payment / SMS rule:** `PAID` invoices **block** delete so Stripe ledger rows are not silently cascaded. Open Stripe Checkout sessions (`PENDING` + `stripeCheckoutSessionId`) also **block**, because a customer could still complete payment after the job vanished. Refund paid items or let the session expire first. Allowed jobs cascade `StatusEvent` rows, T&M `Invoice` / `InvoiceLine` rows, and remaining `Payment` rows (`PENDING` without a session, or `REFUNDED`). Client SMS fields live on the booking and go away with it. Job status itself does not block — spam or cancelled tickets can be removed.
 
 ### Delete a client
 
@@ -216,7 +219,8 @@ Password-protected jobs and payments for homeowners and property managers. Cooki
 3. **Existing customer (booked before passwords):** **Claim my jobs** with the booking email + phone, then choose a password. Or open `/account/<customer.token>` / `/account/s/<token>` (set-password only). After a password exists, that link cannot sign anyone in.
 4. **Forgot password:** `/account/forgot` texts a 6-digit code via Twilio to the phone on the Customer record. Email reset is not wired. 555 test numbers cannot receive SMS — call dispatch or use the seed password below.
 5. **Jobs:** current vs past (completed/cancelled), status, dates, trade, booking IDs, owed vs paid.
-6. **Pay:** pending deposit/balance opens the same TOD Stripe Checkout as booking. Success returns to the job. Webhook is still the source of truth for paid.
+6. **Invoice:** when the assigned shop sends a time & materials invoice, the job detail shows labor, materials, deposit credit, and the TOD balance.
+7. **Pay:** pending deposit/balance (including the invoice remainder) opens the same TOD Stripe Checkout as booking. Success returns to the job. Webhook is still the source of truth for paid.
 
 **Seeded test customer (local `npx prisma db seed`):**
 
@@ -259,13 +263,16 @@ A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
 2. Open `/contractor` (logged-out `/contractor/jobs/…` redirects here).  
 3. Sign in with the Waldo email (or `PRO-DEMO01`) and `waldo-demo-10`.  
 4. **Jobs** — current assigned (`TOD-DEMO01`) + available (`TOD-OPEN01`). Accept + En route / On site / Done + ETA text.  
-5. **Past** — completed `TOD-DONE01` and cancelled `TOD-CXL01`.  
-6. **SMS** — text only on jobs you own; 555 numbers skip; missing Twilio still saves the note.  
-7. **Pay** — per-job pending/paid/refunded from `Payment` rows + history. Copy states payouts are via TOD.  
-8. **Profile** — edit contact, coverage, rates, bio → Save. Change password with the current password.  
-9. **Job push** — on Profile tap **Enable job push** (or the header link). Assign `TOD-OPEN01` to Waldo from `/admin` (or book that shop). A push should fire if VAPID keys are set; otherwise Twilio texts the shop phone when configured. Tap the notification → `/contractor/jobs/<id>`.
+5. **Past** — completed `TOD-DONE01` (seeded invoice `INV-DONE01`) and cancelled `TOD-CXL01`.  
+6. **Invoice** — on an assigned job, fill labor hours (rate prefilled from the shop trade rate) + material lines, see deposit credit and TOD total, **Save draft** or **Send invoice**. Send marks the job complete, creates a pending TOD balance, and texts the customer `/account/jobs/<publicId>`.  
+7. **SMS** — text only on jobs you own; 555 numbers skip; missing Twilio still saves the note / invoice.  
+8. **Pay** — per-job pending/paid/refunded from `Payment` rows + history. Copy states payouts are via TOD.  
+9. **Profile** — edit contact, coverage, rates, bio → Save. Change password with the current password.  
+10. **Job push** — on Profile tap **Enable job push** (or the header link). Assign `TOD-OPEN01` to Waldo from `/admin` (or book that shop). A push should fire if VAPID keys are set; otherwise Twilio texts the shop phone when configured. Tap the notification → `/contractor/jobs/<id>`.
 
-Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancelled), **SMS** (text customers on jobs you own), job detail (**Accept**, En route / On site / Done, arrival text), **Profile** (business contact, coverage, rates, bio), and **Pay** (per-job TOD payment status + Payment history). Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site. Payouts are via TOD; the Pay page does not invent Stripe Connect.
+Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancelled), **SMS** (text customers on jobs you own), job detail (**Accept**, En route / On site / Done, arrival text, **time & materials invoice**), **Profile** (business contact, coverage, rates, bio), and **Pay** (per-job TOD payment status + Payment history). Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site. Payouts are via TOD; the Pay page does not invent Stripe Connect.
+
+**Seeded completed invoice:** `TOD-DONE01` / `INV-DONE01` — 1.5 hr HVAC labor at $110 + $199 blower motor = $364, $189 paid deposit credited, **$175.00** pending TOD balance (`PAY-DONEBAL`). Customer Riley can open `/account/jobs/TOD-DONE01` and pay. Production **must** apply `20260913320000_job_invoice` (`npm run db:migrate`) or invoice save/load will fail against a missing table.
 
 **Matching:** an unassigned, not-complete/cancelled booking is available when the shop is **APPROVED**, their `tradesJson` includes the job trade, and `serviceArea` covers the job city or ZIP (case-insensitive substring). Writing **metro** (e.g. “Kansas City metro”) also matches any KC metro city/ZIP from `src/lib/kc-metro.ts`. A city-only list (e.g. “Olathe and 66061”) does not see Independence.
 
@@ -321,10 +328,10 @@ npx prisma db seed
 | `/contractors` | Approved contractor directory |
 | `/contractors/[slug]` | Public profile (approved only; slug, public ID, or id) |
 | `/contractors/signup` `/join` | Licensed contractor application |
-| `/account` `/account/login` `/account/forgot` `/account/jobs/[id]` `/account/profile` | **Customer portal** — password login, jobs past/present, TOD Checkout |
+| `/account` `/account/login` `/account/forgot` `/account/jobs/[id]` `/account/profile` | **Customer portal** — password login, jobs past/present, T&M invoice, TOD Checkout |
 | `/account/[token]` `/account/s/[token]` | One-time set-password invite (not a passwordless session) |
 | `/status` `/status/[token]` | Customer job status |
-| `/contractor` `/contractor/forgot` `/contractor/r/[token]` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — sign-in, forgot-password SMS reset, current jobs, past jobs, SMS, TOD payment status, profile |
+| `/contractor` `/contractor/forgot` `/contractor/r/[token]` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — sign-in, forgot-password SMS reset, current jobs, past jobs, T&M invoice, SMS, TOD payment status, profile |
 | `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit/delete clients, subcontractors, and jobs (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
 | `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |

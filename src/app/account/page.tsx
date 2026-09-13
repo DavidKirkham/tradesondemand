@@ -34,7 +34,7 @@ export default async function AccountPage() {
         <div className="mt-4 rounded-2xl border border-ember/30 bg-ember/5 px-4 py-3 text-sm text-navy">
           <p className="font-semibold">Outstanding with TOD: {formatUsd(totals.pendingCents)}</p>
           <p className="mt-1 text-muted">
-            Open a job to pay a pending deposit or balance through Stripe Checkout.
+            Open a job to pay a pending deposit, invoice, or balance through Stripe Checkout.
           </p>
         </div>
       ) : null}

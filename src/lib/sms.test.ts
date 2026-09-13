@@ -3,8 +3,10 @@ import {
   buildAcceptEtaSms,
   buildContractorCustomerSms,
   buildContractorPasswordResetSms,
+  buildInvoiceSms,
   describeContractorCustomerSms,
   describeContractorEtaSms,
+  describeInvoiceSms,
   getTwilioRequestAuth,
   isTwilioConfigured,
   sendCustomerSms,
@@ -261,6 +263,44 @@ describe("buildContractorPasswordResetSms", () => {
     expect(body).toContain("482193");
     expect(body).toContain("https://todkc.com/contractor/r/reset-token-example");
     expect(body).toMatch(/20 min/i);
+  });
+});
+
+describe("buildInvoiceSms", () => {
+  it("includes the TOD balance and account job link", () => {
+    const body = buildInvoiceSms({
+      businessName: "Waldo Heat & Pipe",
+      publicId: "TOD-DONE01",
+      amountDueCents: 17500,
+      payUrl: "https://todkc.com/account/jobs/TOD-DONE01",
+    });
+    expect(body).toContain("Waldo Heat & Pipe");
+    expect(body).toContain("TOD-DONE01");
+    expect(body).toContain("$175.00");
+    expect(body).toContain("https://todkc.com/account/jobs/TOD-DONE01");
+    expect(body).toMatch(/Trades on Demand/);
+  });
+
+  it("says the deposit covers the work when nothing is due", () => {
+    const body = buildInvoiceSms({
+      businessName: "Waldo Heat & Pipe",
+      publicId: "TOD-DONE01",
+      amountDueCents: 0,
+      payUrl: "https://todkc.com/account/jobs/TOD-DONE01",
+    });
+    expect(body).toMatch(/deposit already covers/i);
+    expect(body).toContain("https://todkc.com/account/jobs/TOD-DONE01");
+  });
+});
+
+describe("describeInvoiceSms", () => {
+  it("explains skipped Twilio without mentioning a failed save", () => {
+    expect(
+      describeInvoiceSms({
+        status: "SKIPPED",
+        error: "Customer number is a reserved 555 test number. Twilio will not deliver it.",
+      }),
+    ).toMatch(/Invoice saved. SMS skipped: Customer number is a reserved 555/);
   });
 });
 

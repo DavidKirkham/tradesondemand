@@ -206,6 +206,68 @@ async function main() {
     });
   }
 
+  try {
+  const doneJob = await prisma.booking.findUnique({
+    where: { publicId: "TOD-DONE01" },
+    include: { payments: true, invoice: true },
+  });
+  if (doneJob && !doneJob.invoice) {
+    const balance = await prisma.payment.upsert({
+      where: { publicId: "PAY-DONEBAL" },
+      update: {},
+      create: {
+        publicId: "PAY-DONEBAL",
+        bookingId: doneJob.id,
+        customerId: customer.id,
+        amountCents: 17500,
+        type: "BALANCE",
+        status: "PENDING",
+        note: "Time & materials invoice INV-DONE01. Deposit already paid $189.00 credited against $364.00. You pay Trades on Demand (Trademark Walls), not the contractor.",
+      },
+    });
+    await prisma.invoice.create({
+      data: {
+        publicId: "INV-DONE01",
+        bookingId: doneJob.id,
+        contractorId: contractor.id,
+        paymentId: balance.id,
+        status: "SENT",
+        laborHours: "1.5",
+        laborRateCents: 11000,
+        laborCents: 16500,
+        materialsCents: 19900,
+        subtotalCents: 36400,
+        depositPaidCents: 18900,
+        amountDueCents: 17500,
+        note: "Replaced blower motor. Deposit credited.",
+        sentAt: new Date(),
+        lines: {
+          create: [
+            {
+              kind: "LABOR",
+              description: "HVAC labor",
+              quantity: "1.5",
+              unitCents: 11000,
+              amountCents: 16500,
+              sortOrder: 0,
+            },
+            {
+              kind: "MATERIAL",
+              description: "Blower motor",
+              quantity: "1",
+              unitCents: 19900,
+              amountCents: 19900,
+              sortOrder: 1,
+            },
+          ],
+        },
+      },
+    });
+  }
+  } catch {
+    // Invoice tables land in 20260913320000_job_invoice — skip seed if Neon is behind.
+  }
+
   const claimExisting = await prisma.booking.findUnique({ where: { publicId: "TOD-CLAIM01" } });
   if (!claimExisting) {
     await prisma.booking.create({
