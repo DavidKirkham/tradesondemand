@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminAssignJobToContractor } from "@/components/admin/AdminAssignJobToContractor";
 import { AdminContractorEditor } from "@/components/admin/AdminContractorEditor";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
+import { contractorOffersTrade, jobIsAssignable } from "@/lib/admin-assign";
 import { contractorStatusLabel, parseTradeRatesJson, parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
@@ -36,6 +38,35 @@ async function ContractorDetail({ id }: { id: string }) {
     },
   });
   if (!contractor) notFound();
+
+  const trades = parseTradesJson(contractor.tradesJson);
+  const pushable =
+    contractor.status === "APPROVED"
+      ? (
+          await prisma.booking.findMany({
+            where: { status: { notIn: ["CANCELLED", "COMPLETED"] } },
+            orderBy: { createdAt: "desc" },
+            include: { contractor: true },
+            take: 80,
+          })
+        )
+          .filter(
+            (job) =>
+              job.contractorId !== contractor.id &&
+              jobIsAssignable(job.status) &&
+              contractorOffersTrade(contractor.tradesJson, job.trade),
+          )
+          .map((job) => ({
+            id: job.id,
+            publicId: job.publicId,
+            trade: job.trade,
+            city: job.city,
+            zip: job.zip,
+            status: job.status,
+            contractorId: job.contractorId,
+            contractorName: job.contractor?.businessName ?? null,
+          }))
+      : [];
 
   return (
     <div className="space-y-6">
@@ -81,6 +112,23 @@ async function ContractorDetail({ id }: { id: string }) {
         reviewNote={contractor.reviewNote}
       />
 
+      {contractor.status === "APPROVED" ? (
+        <section className="rounded-2xl border border-line bg-paper p-5">
+          <h2 className="font-display text-2xl text-navy">Push a job to this shop</h2>
+          <p className="mt-1 text-sm text-muted">
+            Unassigned or reassignable tickets in {trades.map((slug) => getTrade(slug)?.name ?? slug).join(", ") || "their trades"}.
+            Confirm if the job already belongs to another shop.
+          </p>
+          <div className="mt-4">
+            <AdminAssignJobToContractor
+              contractorId={contractor.id}
+              contractorName={contractor.businessName}
+              jobs={pushable}
+            />
+          </div>
+        </section>
+      ) : null}
+
       <section>
         <div className="flex items-center justify-between">
           <h2 className="font-display text-2xl text-navy">Assigned jobs</h2>
@@ -105,7 +153,7 @@ async function ContractorDetail({ id }: { id: string }) {
                 {contractor.bookings.map((booking) => (
                   <tr key={booking.id} className="border-b border-line/70 last:border-0">
                     <td className="px-4 py-3 font-mono text-xs">
-                      <Link href={`/admin/jobs?q=${booking.publicId}`} className="font-semibold text-ember">
+                      <Link href={`/admin/jobs/${booking.id}`} className="font-semibold text-ember">
                         {booking.publicId}
                       </Link>
                     </td>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AvailableJobsWatcher } from "@/components/contractor-app/AvailableJobsWatcher";
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
 import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
 import { jobFitsContractor } from "@/lib/contractor-app";
@@ -34,6 +35,7 @@ export default async function ContractorHomePage() {
     <ContractorAppShell businessName={contractor.businessName}>
       <h1 className="font-display text-2xl text-navy">Jobs</h1>
       <p className="mt-1 text-sm text-muted">Assigned to you, plus open tickets in your trades and area.</p>
+      <AvailableJobsWatcher initialCount={available.length} />
 
       <section className="mt-6">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Assigned</h2>
@@ -44,7 +46,7 @@ export default async function ContractorHomePage() {
         ) : (
           <ul className="mt-2 space-y-2">
             {assigned.map((job) => (
-              <JobRow key={job.id} {...job} />
+              <JobRow key={job.id} {...job} revealCustomer />
             ))}
           </ul>
         )}
@@ -59,7 +61,7 @@ export default async function ContractorHomePage() {
         ) : (
           <ul className="mt-2 space-y-2">
             {available.map((job) => (
-              <JobRow key={job.id} {...job} />
+              <JobRow key={job.id} {...job} revealCustomer={false} />
             ))}
           </ul>
         )}
@@ -78,6 +80,7 @@ function JobRow({
   customerName,
   customerPhone,
   status,
+  revealCustomer,
 }: {
   id: string;
   publicId: string;
@@ -88,6 +91,7 @@ function JobRow({
   customerName: string;
   customerPhone: string;
   status: string;
+  revealCustomer: boolean;
 }) {
   return (
     <li>
@@ -97,9 +101,13 @@ function JobRow({
         <p className="text-sm text-muted">
           {urgency} · {city} {zip} · {statusLabel(status)}
         </p>
-        <p className="mt-1 text-sm text-navy">
-          {customerName} · {formatPhone(customerPhone)}
-        </p>
+        {revealCustomer ? (
+          <p className="mt-1 text-sm text-navy">
+            {customerName} · {formatPhone(customerPhone)}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted">Neighborhood / ZIP only until you accept.</p>
+        )}
       </Link>
     </li>
   );

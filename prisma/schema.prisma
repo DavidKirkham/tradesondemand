@@ -29,6 +29,9 @@ model Booking {
   customerId      String?
   customer        Customer?     @relation(fields: [customerId], references: [id])
   matchPreference String        @default("FIRST_AVAILABLE")
+  customerSmsStatus String?
+  customerSmsBody   String?
+  customerSmsError  String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   events          StatusEvent[]

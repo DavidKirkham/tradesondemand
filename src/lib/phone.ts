@@ -23,10 +23,19 @@ export function telHref(digits = getDispatchPhone()): string {
   return cleaned.startsWith("1") ? `tel:+${cleaned}` : `tel:+1${cleaned}`;
 }
 
-export function isValidUsPhone(value: string): boolean {
+export function nationalUsDigits(value: string): string {
   const cleaned = value.replace(/\D/g, "");
-  const national = cleaned.length === 11 && cleaned.startsWith("1") ? cleaned.slice(1) : cleaned;
-  return national.length === 10;
+  return cleaned.length === 11 && cleaned.startsWith("1") ? cleaned.slice(1) : cleaned;
+}
+
+export function toE164Us(value: string): string | null {
+  const national = nationalUsDigits(value);
+  if (national.length !== 10) return null;
+  return `+1${national}`;
+}
+
+export function isValidUsPhone(value: string): boolean {
+  return nationalUsDigits(value).length === 10;
 }
 
 export function isValidEmail(value: string): boolean {

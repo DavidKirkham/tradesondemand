@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminAddressEditor } from "@/components/admin/AdminAddressEditor";
+import { AdminAssignContractor } from "@/components/admin/AdminAssignContractor";
 import { AdminClientEditor } from "@/components/admin/AdminClientEditor";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { AdminPaymentStatus } from "@/components/admin/AdminPaymentStatus";
 import { statusLabel } from "@/lib/booking";
+import { parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatUsd } from "@/lib/money";
 import { paymentTypeLabel } from "@/lib/payments";
@@ -41,6 +43,17 @@ async function ClientDetail({ id }: { id: string }) {
     },
   });
   if (!customer) notFound();
+
+  const approved = await prisma.contractor.findMany({
+    where: { status: "APPROVED" },
+    orderBy: { businessName: "asc" },
+  });
+  const contractors = approved.map((row) => ({
+    id: row.id,
+    businessName: row.businessName,
+    publicId: row.publicId,
+    trades: parseTradesJson(row.tradesJson),
+  }));
 
   return (
     <div className="space-y-6">
@@ -101,6 +114,7 @@ async function ClientDetail({ id }: { id: string }) {
                   <th className="px-4 py-3 font-medium">Job</th>
                   <th className="px-4 py-3 font-medium">Trade</th>
                   <th className="px-4 py-3 font-medium">Subcontractor</th>
+                  <th className="px-4 py-3 font-medium">Assign</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                 </tr>
               </thead>
@@ -108,7 +122,7 @@ async function ClientDetail({ id }: { id: string }) {
                 {customer.bookings.map((booking) => (
                   <tr key={booking.id} className="border-b border-line/70 last:border-0">
                     <td className="px-4 py-3 font-mono text-xs">
-                      <Link href={`/admin/jobs?q=${booking.publicId}`} className="font-semibold text-ember">
+                      <Link href={`/admin/jobs/${booking.id}`} className="font-semibold text-ember">
                         {booking.publicId}
                       </Link>
                     </td>
@@ -119,8 +133,17 @@ async function ClientDetail({ id }: { id: string }) {
                           {booking.contractor.businessName}
                         </Link>
                       ) : (
-                        <span className="text-muted">First available</span>
+                        <span className="text-muted">Unassigned</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 min-w-[16rem]">
+                      <AdminAssignContractor
+                        bookingId={booking.id}
+                        trade={booking.trade}
+                        currentContractorId={booking.contractorId}
+                        currentContractorName={booking.contractor?.businessName ?? null}
+                        contractors={contractors}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <AdminJobStatus id={booking.id} status={booking.status} />

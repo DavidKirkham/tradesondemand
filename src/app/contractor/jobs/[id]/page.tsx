@@ -41,21 +41,35 @@ export default async function ContractorJobDetailPage({
 
       <section className="mt-5 rounded-2xl border border-line bg-paper p-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Site</h2>
-        <p className="mt-1 text-navy">
-          {job.street}
-          <br />
-          {job.city}, {job.state} {job.zip}
-        </p>
+        {assigned ? (
+          <p className="mt-1 text-navy">
+            {job.street}
+            <br />
+            {job.city}, {job.state} {job.zip}
+          </p>
+        ) : (
+          <p className="mt-1 text-navy">
+            {job.city}, {job.state} {job.zip}
+            <span className="mt-1 block text-sm text-muted">Full street after you accept.</span>
+          </p>
+        )}
       </section>
 
-      <section className="mt-3 rounded-2xl border border-line bg-paper p-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Customer</h2>
-        <p className="mt-1 font-semibold text-navy">{job.customerName}</p>
-        <a href={telHref(job.customerPhone)} className="text-sm font-semibold text-ember">
-          {formatPhone(job.customerPhone)}
-        </a>
-        <p className="text-sm text-muted">{job.customerEmail}</p>
-      </section>
+      {assigned ? (
+        <section className="mt-3 rounded-2xl border border-line bg-paper p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Customer</h2>
+          <p className="mt-1 font-semibold text-navy">{job.customerName}</p>
+          <a href={telHref(job.customerPhone)} className="text-sm font-semibold text-ember">
+            {formatPhone(job.customerPhone)}
+          </a>
+          <p className="text-sm text-muted">{job.customerEmail}</p>
+        </section>
+      ) : (
+        <section className="mt-3 rounded-2xl border border-line bg-paper p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Customer</h2>
+          <p className="mt-1 text-sm text-muted">Contact is available after you accept. The desk texts them for you.</p>
+        </section>
+      )}
 
       <section className="mt-3 rounded-2xl border border-line bg-paper p-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Problem</h2>
@@ -67,7 +81,12 @@ export default async function ContractorJobDetailPage({
       </p>
 
       <div className="mt-4">
-        <ContractorJobActions id={job.id} status={job.status} assigned={assigned} />
+        <ContractorJobActions
+          id={job.id}
+          status={job.status}
+          assigned={assigned}
+          smsStatus={job.customerSmsStatus}
+        />
       </div>
     </ContractorAppShell>
   );

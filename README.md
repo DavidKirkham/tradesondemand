@@ -157,9 +157,22 @@ Password-protected owner UI (same cookie as the old `/ops` board; `/ops` redirec
 - `/admin` — counts + recent clients + pending subcontractors  
 - `/admin/clients` / `/admin/clients/[id]` — search, edit contact, edit job-site addresses, booking history, TOD payments  
 - `/admin/contractors` / `/admin/contractors/[id]` — all statuses, filter by trade, edit profile/rates, approve/reject, assigned jobs  
-- `/admin/jobs` — booking overview with links back to client/subcontractor  
+- `/admin/jobs` — booking overview; assign an approved subcontractor from the list  
+- `/admin/jobs/[id]` — job detail: assign / reassign, status events  
+- `/admin/contractors/[id]` — edit shop; **push an unassigned or reassignable job** to that shop  
 
 Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variables) for **Production and Preview**. `/admin` and `/ops` read `process.env.ADMIN_PASSWORD`, then `process.env.OPS_PASSWORD` if the first is unset. There is no default password in the app — do not use a documented example value in production. Locally, put your own value in `.env` (see `.env.example`; that blank is a local-dev placeholder only). Client records stay private; they are not listed on `/contractors`.
+
+### Assign a job to a subcontractor
+
+1. Sign in at `/admin`.
+2. Open **Jobs** (`/admin/jobs`) or a job (`/admin/jobs/<id>`).
+3. Pick an **approved** shop licensed for that job’s trade → **Assign**. Reassignment shows an in-page confirm.
+4. Or open `/admin/contractors/<id>` and use **Push a job to this shop**.
+5. The booking gets `contractorId`, status **Dispatched** if it was still Received, and a StatusEvent like `Assigned by admin to Waldo Heat & Pipe`.
+6. That shop signs in at `/contractor` (email + phone, or magic link) and sees the ticket under **Assigned**.
+
+Pending / rejected shops never appear in the picker. Cancelled jobs cannot be assigned.
 
 ### Contractor PWA (`/contractor`)
 
@@ -177,7 +190,11 @@ Mobile-first app for **approved** licensed partners. Pending and rejected applic
 
 A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
 
-Inside the app: assigned jobs, available jobs in your trades/area, job detail (customer contact, address, problem), status (en route / on site / done), and public profile edit (rates, bio, coverage). Customers still pay TOD — the app says not to collect on site.
+Inside the app: assigned jobs, available jobs in your trades/area, job detail, **Accept** (race-safe claim), arrival / ETA text to the client, status (en route / on site / done), and public profile edit. Available cards show neighborhood/ZIP only — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site.
+
+While `/contractor` is open, the jobs list polls every 20s. If you allow browser notifications, a new matching available job shows an alert. Full Web Push is not in v1.
+
+**Client SMS (optional Twilio):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. If they are missing, Accept still works; the ETA is saved and `/admin/jobs/<id>` shows SMS skipped. Secrets are never logged.
 
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
@@ -209,6 +226,7 @@ npx prisma db seed
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |
 | `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
 | `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | For client SMS | Contractor Accept ETA texts. Empty = skip SMS, still save the note. |
 
 ## Routes
 
@@ -222,7 +240,7 @@ npx prisma db seed
 | `/account` `/account/[token]` | Private customer profile (cookie or magic link after first book) |
 | `/status` `/status/[token]` | Customer job status |
 | `/contractor` `/contractor/jobs/[id]` `/contractor/profile` | **Approved contractor PWA** — jobs, status, public profile |
-| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` | **Owner backend** — review/edit clients and subcontractors (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
+| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit clients and subcontractors; **assign jobs** (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
 | `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |
 | `/api/stripe/webhook` | Stripe signature-verified payment updates |
