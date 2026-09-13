@@ -5,7 +5,7 @@ import { createCustomerToken, createPaymentPublicId } from "@/lib/customer";
 import { customerCookieOptions, issueCustomerSession } from "@/lib/customer-auth";
 import { depositForBooking } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
-import { isStripeCheckoutConfigured, stripeMissingKeysMessage } from "@/lib/stripe";
+import { isStripeCheckoutConfigured, logStripeMissingKeys } from "@/lib/stripe";
 import { createPlatformCheckoutSession } from "@/lib/stripe-checkout";
 
 export const dynamic = "force-dynamic";
@@ -128,7 +128,6 @@ export async function POST(request: Request) {
   const payment = booking.payments[0];
   let checkoutUrl: string | null = null;
   let stripeConfigured = isStripeCheckoutConfigured();
-  let stripeMessage: string | null = null;
 
   if (deposit.amountCents > 0 && stripeConfigured) {
     const session = await createPlatformCheckoutSession({
@@ -151,10 +150,10 @@ export async function POST(request: Request) {
         });
       }
     } else {
-      stripeMessage = session.error;
+      console.warn(`[stripe] booking checkout failed: ${session.error}`);
     }
   } else if (deposit.amountCents > 0 && !stripeConfigured) {
-    stripeMessage = stripeMissingKeysMessage();
+    logStripeMissingKeys("booking created without Checkout");
   }
 
   const sessionToken = await issueCustomerSession(customer.id);
@@ -166,7 +165,6 @@ export async function POST(request: Request) {
     deposit,
     checkoutUrl,
     stripeConfigured,
-    stripeMessage,
     paymentStatus: payment?.status ?? (deposit.amountCents === 0 ? "PAID" : "PENDING"),
   });
   const cookie = customerCookieOptions(sessionToken);

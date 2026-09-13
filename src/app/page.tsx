@@ -150,8 +150,7 @@ export default function HomePage() {
             <p className="mt-3 text-sm leading-7 text-muted">
               Emergencies show a dispatch hold range. Routine visits don&apos;t take a trip fee to
               get on the calendar. You pay Trades on Demand; payments are processed by Trademark
-              Walls. We pay the partner. If Stripe keys are missing, the job still books and the
-              deposit stays pending.
+              Walls. We pay the partner.
             </p>
           </div>
         </div>

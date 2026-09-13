@@ -74,7 +74,6 @@ export function BookingWizard({
     token: string;
     checkoutUrl?: string | null;
     stripeConfigured?: boolean;
-    stripeMessage?: string | null;
     paymentStatus?: string;
   } | null>(null);
   const [partner, setPartner] = useState<PublicContractor | null>(null);
@@ -148,7 +147,6 @@ export function BookingWizard({
         token?: string;
         checkoutUrl?: string | null;
         stripeConfigured?: boolean;
-        stripeMessage?: string | null;
         paymentStatus?: string;
       };
       if (!response.ok || !payload.publicId || !payload.token) {
@@ -164,7 +162,6 @@ export function BookingWizard({
         token: payload.token,
         checkoutUrl: payload.checkoutUrl,
         stripeConfigured: payload.stripeConfigured,
-        stripeMessage: payload.stripeMessage,
         paymentStatus: payload.paymentStatus,
       });
     } catch {
@@ -196,11 +193,6 @@ export function BookingWizard({
           You pay Trades on Demand. Payments are processed by Trademark Walls — never the
           contractor. Open your private profile for receipts and job history.
         </p>
-        {result.stripeMessage ? (
-          <p className="mt-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-navy">
-            {result.stripeMessage}
-          </p>
-        ) : null}
         {result.paymentStatus === "PENDING" && !result.checkoutUrl ? (
           <Link
             href={`/book/retry?token=${result.token}`}
