@@ -8,7 +8,7 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 
 - **All trades.** Plumbing, Electrical, HVAC, Roofing, Handyman/carpentry, Painting, Flooring, Appliance repair, Locksmith, Pest control, Landscaping, Cleaning, Garage door, Concrete/masonry, Fencing, Windows & doors, Water damage/restoration, plus **General contractor / Other**.
 - **KC metro only.** Kansas City (MO and KS), Overland Park, Olathe, Independence, Lee’s Summit, Shawnee, Lenexa, Leawood, Blue Springs, Liberty, and nearby ZIPs. Non-metro cities and ZIPs are rejected with a clear message.
-- **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` if needed; the UI works without env setup.
+- **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` if needed; the UI works without env setup.
 - **Licensed contractors.** Partners apply at `/contractors/signup`. Ops approves/rejects. Approved shops get a public profile and can be chosen during booking.
 - **Marketplace payments.** Customers pay **Trades on Demand**. TOD pays contractors. No pay-the-pro-directly flow. Stripe is stubbed; payment rows still exist.
 - **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, ops review + TOD ledger. No contractor mobile app. No live Stripe or SMS.
@@ -70,7 +70,7 @@ npx prisma db seed
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | SQLite file URL, e.g. `file:./dev.db` (relative to `/prisma`) |
-| `NEXT_PUBLIC_DISPATCH_PHONE` | No | Tap-to-call number. Defaults to **8165160735** / (816) 516-0735 |
+| `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` | No | Tap-to-call. Hardcoded default is **8165160735** — displays **(816) 516-0735**, links `tel:+18165160735`. Demos work with no env file. |
 | `OPS_PASSWORD` | Yes | Password for `/ops` (default in `.env.example`: `dispatch`) |
 
 ## Routes
