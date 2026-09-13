@@ -68,6 +68,10 @@ export function createContractorPublicId(): string {
   return `PRO-${randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
+export function createContractorLoginToken(): string {
+  return randomBytes(18).toString("base64url");
+}
+
 export function createContractorSlug(businessName: string): string {
   const base = businessName
     .toLowerCase()

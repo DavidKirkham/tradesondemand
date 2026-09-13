@@ -11,7 +11,7 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 - **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` if needed; the UI works without env setup.
 - **Licensed contractors.** Partners apply at `/contractors/signup`. Admin approves/rejects at `/admin/contractors`. Approved shops get a public profile and can be chosen during booking.
 - **Marketplace payments.** Customer → **Trades on Demand / Trademark Walls** (Stripe Checkout) → contractor payout later. No Connect transfers in Phase 1. No pay-the-pro-directly flow.
-- **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, `/admin` for clients + subcontractors + jobs. No contractor mobile app. No live Stripe or SMS.
+- **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, `/admin` for clients + subcontractors + jobs, `/contractor` PWA for approved partners.
 
 ## Core booking loop
 
@@ -118,6 +118,24 @@ Password-protected owner UI (same cookie as the old `/ops` board; `/ops` redirec
 
 Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variables) for **Production and Preview**. `/admin` and `/ops` read `process.env.ADMIN_PASSWORD`, then `process.env.OPS_PASSWORD` if the first is unset. There is no default password in the app — do not use a documented example value in production. Locally, put your own value in `.env` (see `.env.example`; that blank is a local-dev placeholder only). Client records stay private; they are not listed on `/contractors`.
 
+### Contractor PWA (`/contractor`)
+
+Mobile-first app for **approved** licensed partners. Pending and rejected applications cannot sign in.
+
+1. Open [https://todkc.com/contractor](https://todkc.com/contractor) (or `/contractor` on this deploy) on a phone.  
+2. iPhone: Share → **Add to Home Screen**. Android: Chrome menu → **Install app** / Add to Home Screen.  
+3. Sign in with the **email and phone from the contractor application**. Or open the magic link `/contractor/s/<loginToken>` (issued when the shop is created).
+
+**Seeded test shop (local `npx prisma db seed`):**
+
+- Email: `morgan@waldoheat.example`  
+- Phone: `8165160735`  
+- Magic link: `/contractor/s/tod-waldo-demo`  
+
+A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
+
+Inside the app: assigned jobs, available jobs in your trades/area, job detail (customer contact, address, problem), status (en route / on site / done), and public profile edit (rates, bio, coverage). Customers still pay TOD — the app says not to collect on site.
+
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
 ```bash
@@ -160,15 +178,17 @@ npx prisma db seed
 | `/contractors/signup` `/join` | Licensed contractor application |
 | `/account` `/account/[token]` | Private customer profile (cookie or magic link after first book) |
 | `/status` `/status/[token]` | Customer job status |
-| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` | **Owner backend** — review/edit clients and subcontractors (password: `ADMIN_PASSWORD` or `OPS_PASSWORD`) |
+| `/contractor` `/contractor/jobs/[id]` `/contractor/profile` | **Approved contractor PWA** — jobs, status, public profile |
+| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` | **Owner backend** — review/edit clients and subcontractors (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
 | `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |
 | `/api/stripe/webhook` | Stripe signature-verified payment updates |
 | `/api/contractors` | Public list (approved) + signup POST |
 | `/api/status/[token]` | Lookup by job ID or token |
+| `/api/contractor/*` | Approved-contractor session (separate cookie from admin/customers) |
 | `/api/admin/*` | Authenticated admin login + client/contractor/job edits |
 | `/api/ops/*` | Same cookie auth; older ops endpoints still work |
 
 ## Out of scope (v1)
 
-Real Stripe or SMS, a contractor mobile app that accepts jobs, and any UK WordPress sites.
+SMS and a native Expo app. Contractor jobs run as a PWA at `/contractor`. Any UK WordPress sites.

@@ -69,6 +69,7 @@ model Contractor {
   tradeRatesJson     String
   status             String    @default("PENDING")
   reviewNote         String?
+  loginToken         String    @unique
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   bookings           Booking[]

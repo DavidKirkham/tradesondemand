@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  createContractorLoginToken,
   createContractorPublicId,
   createContractorSlug,
   toPublicContractor,
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
       minimumChargeCents: parsed.data.minimumChargeCents,
       emergencyRateCents: parsed.data.emergencyRateCents,
       tradeRatesJson: JSON.stringify(parsed.data.tradeRates),
+      loginToken: createContractorLoginToken(),
       status: "PENDING",
     },
   });

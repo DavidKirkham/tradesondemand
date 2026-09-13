@@ -47,7 +47,7 @@ async function main() {
 
   const contractor = await prisma.contractor.upsert({
     where: { slug: "waldo-heat-demo" },
-    update: {},
+    update: { loginToken: "tod-waldo-demo" },
     create: {
       publicId: "PRO-DEMO01",
       slug: "waldo-heat-demo",
@@ -55,6 +55,7 @@ async function main() {
       contactName: "Morgan Ellis",
       phone: "8165160735",
       email: "morgan@waldoheat.example",
+      loginToken: "tod-waldo-demo",
       tradesJson: JSON.stringify(["plumbing", "hvac"]),
       licenseNumber: "MO-HVAC-8812",
       licenseType: "Mechanical contractor",
@@ -79,6 +80,53 @@ async function main() {
     where: { publicId: "TOD-DEMO01", contractorId: null },
     data: { contractorId: contractor.id, matchPreference: "SPECIFIC" },
   });
+
+  await prisma.contractor.upsert({
+    where: { slug: "pending-pipe-demo" },
+    update: {},
+    create: {
+      publicId: "PRO-PEND01",
+      slug: "pending-pipe-demo",
+      businessName: "Pending Pipe Demo",
+      contactName: "Casey Lee",
+      phone: "8165550199",
+      email: "casey@pending.example",
+      loginToken: "tod-pending-demo",
+      tradesJson: JSON.stringify(["plumbing"]),
+      licenseNumber: "MO-PL-0000",
+      licenseType: "Journeyman plumber",
+      licenseState: "MO",
+      serviceArea: "Kansas City",
+      insured: true,
+      hourlyRateCents: 9000,
+      minimumChargeCents: 14900,
+      tradeRatesJson: JSON.stringify([{ slug: "plumbing", hourlyCents: 9000, minimumCents: 14900 }]),
+      status: "PENDING",
+    },
+  });
+
+  const openExisting = await prisma.booking.findUnique({ where: { publicId: "TOD-OPEN01" } });
+  if (!openExisting) {
+    await prisma.booking.create({
+      data: {
+        publicId: "TOD-OPEN01",
+        token: "demo-open-job-kc",
+        trade: "plumbing",
+        problem: "Kitchen sink backing up in a Brookside bungalow. First available.",
+        urgency: "routine",
+        street: "210 W 63rd St",
+        city: "Kansas City",
+        state: "MO",
+        zip: "64113",
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        customerEmail: customer.email,
+        customerId: customer.id,
+        quoteSummary: "Routine plumbing visit",
+        events: { create: { status: "RECEIVED", note: "Open first-available ticket" } },
+      },
+    });
+  }
 }
 
 main()

@@ -1,5 +1,5 @@
 const CACHE = "tod-shell-v1";
-const SHELL = ["/", "/book", "/services", "/offline.html"];
+const SHELL = ["/", "/book", "/services", "/contractor", "/offline.html"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

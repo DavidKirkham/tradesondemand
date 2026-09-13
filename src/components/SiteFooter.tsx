@@ -36,6 +36,9 @@ export function SiteFooter() {
               <Link href="/contractors/signup">Join as a licensed contractor</Link>
             </li>
             <li>
+              <Link href="/contractor">Contractor app</Link>
+            </li>
+            <li>
               <Link href="/status">Job status</Link>
             </li>
             <li>

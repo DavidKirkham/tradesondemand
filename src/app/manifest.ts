@@ -13,5 +13,13 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
     ],
+    shortcuts: [
+      {
+        name: "Contractor jobs",
+        short_name: "Jobs",
+        url: "/contractor",
+        description: "Approved partner job list",
+      },
+    ],
   };
 }

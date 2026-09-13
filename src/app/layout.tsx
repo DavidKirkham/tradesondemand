@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/PwaRegister";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -46,25 +47,32 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const surface = (await headers()).get("x-tod-surface");
+  const contractorApp = surface === "contractor";
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col pb-20 sm:pb-0">
+      <body className={`flex min-h-full flex-col ${contractorApp ? "" : "pb-20 sm:pb-0"}`}>
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-cream focus:px-3 focus:py-2"
         >
           Skip to content
         </a>
-        <SiteHeader />
+        {contractorApp ? null : <SiteHeader />}
         <main id="main" className="flex-1">
           {children}
         </main>
-        <SiteFooter />
-        <StickyCallBar />
+        {contractorApp ? null : (
+          <>
+            <SiteFooter />
+            <StickyCallBar />
+          </>
+        )}
         <PwaRegister />
         <p className="sr-only">Dispatch phone {phone}</p>
       </body>
