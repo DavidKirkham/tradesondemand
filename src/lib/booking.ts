@@ -164,7 +164,7 @@ export function statusDetail(status: string, urgency: string): string {
     case "ON_SITE":
       return "Someone is on site. Approve any extra work before it starts.";
     case "COMPLETED":
-      return "Job marked complete. If something still isn't right, call dispatch.";
+      return "Job marked complete. If an invoice was sent, pay the remaining balance to Trades on Demand in your account. If something still isn't right, call dispatch.";
     case "CANCELLED":
       return "This booking was cancelled. Call us if that was a mistake.";
     default:

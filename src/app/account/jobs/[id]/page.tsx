@@ -3,9 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AccountPayButton } from "@/components/account/AccountPayButton";
 import { AccountShell } from "@/components/account/AccountShell";
+import { InvoiceBreakdown } from "@/components/invoice/InvoiceBreakdown";
 import { statusDetail, statusLabel } from "@/lib/booking";
 import { requireCustomer } from "@/lib/customer-auth";
 import { customerPaymentLine, customerPaymentTotals, payableCustomerPayments } from "@/lib/customer-jobs";
+import { customerCanSeeInvoice } from "@/lib/invoice";
+import { loadBookingInvoice } from "@/lib/invoice-columns";
 import { formatUsd } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
@@ -44,6 +47,12 @@ export default async function AccountJobPage({
   const totals = customerPaymentTotals(booking.payments);
   const payable = payableCustomerPayments(booking.payments);
   const created = booking.createdAt.toLocaleString("en-US", { timeZone: "America/Chicago" });
+  const invoiceRecord = await loadBookingInvoice(booking.id);
+  const invoice =
+    invoiceRecord && customerCanSeeInvoice(invoiceRecord.status) ? invoiceRecord : null;
+  const invoicePayment = invoice?.payment ?? null;
+  const invoicePayable =
+    invoicePayment && payable.some((row) => row.id === invoicePayment.id) ? invoicePayment : null;
 
   return (
     <AccountShell name={customer.name} needsPassword={!customer.passwordHash}>
@@ -83,6 +92,42 @@ export default async function AccountJobPage({
           <Row label="Problem" value={booking.problem} />
         </dl>
       </div>
+
+      {invoice ? (
+        <section className="mt-8 rounded-2xl border border-line bg-paper p-5">
+          <h3 className="font-display text-2xl text-navy">Invoice</h3>
+          <p className="mt-1 text-sm text-muted">
+            Time and materials from {booking.contractor?.businessName ?? "your contractor"}. Pay the
+            remaining balance to Trades on Demand.
+          </p>
+          <div className="mt-4">
+            <InvoiceBreakdown
+              publicId={invoice.publicId}
+              status={invoice.status}
+              lines={invoice.lines}
+              laborCents={invoice.laborCents}
+              materialsCents={invoice.materialsCents}
+              subtotalCents={invoice.subtotalCents}
+              depositPaidCents={invoice.depositPaidCents}
+              amountDueCents={invoice.amountDueCents}
+              note={invoice.note}
+            />
+          </div>
+          {invoicePayable ? (
+            <div className="mt-4">
+              <AccountPayButton
+                jobId={booking.publicId}
+                paymentId={invoicePayable.id}
+                label={`Pay invoice balance ${formatUsd(invoicePayable.amountCents)} to TOD`}
+              />
+            </div>
+          ) : invoice.amountDueCents === 0 ? (
+            <p className="mt-3 text-sm text-ok">
+              The deposit already covers this invoice. Nothing more is owed to TOD.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="mt-8">
         <h3 className="font-display text-2xl text-navy">Pay Trades on Demand</h3>

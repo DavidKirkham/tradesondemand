@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { isPastContractorJob, PAST_JOB_STATUSES } from "./contractor-app";
+import { isMissingInvoiceModel } from "./invoice-columns";
 import { prisma } from "./prisma";
 
 export type ContractorDeleteJob = {
@@ -69,6 +70,14 @@ export function defaultDeleteContractorStore(): DeleteContractorStore {
           where: { contractorId: id, status: { in: [...PAST_JOB_STATUSES] } },
           data: { contractorId: null },
         });
+        try {
+          await tx.invoice.updateMany({
+            where: { contractorId: id },
+            data: { contractorId: null },
+          });
+        } catch (error) {
+          if (!isMissingInvoiceModel(error)) throw error;
+        }
         await tx.contractor.delete({ where: { id } });
       });
     },
@@ -92,8 +101,10 @@ class ContractorDeleteConflict extends Error {
  *
  * Booking rule: open jobs (not completed/cancelled) block delete so active
  * or unpaid work is not silently unassigned. Completed and cancelled jobs
- * stay on the books with contractorId set to null. Password-reset rows and
- * Web Push subscriptions cascade from Prisma. Payments stay on the booking.
+ * stay on the books with contractorId set to null. Time & materials invoices
+ * stay on those jobs with Invoice.contractorId set to null (same history
+ * rule; the FK is ON DELETE SET NULL). Password-reset rows and Web Push
+ * subscriptions cascade from Prisma. Payments stay on the booking.
  */
 export async function deleteAdminContractor(
   id: string,
