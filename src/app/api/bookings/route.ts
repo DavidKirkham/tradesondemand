@@ -127,7 +127,7 @@ export async function POST(request: Request) {
 
   const payment = booking.payments[0];
   let checkoutUrl: string | null = null;
-  let stripeConfigured = isStripeCheckoutConfigured();
+  const stripeConfigured = isStripeCheckoutConfigured();
 
   if (deposit.amountCents > 0 && stripeConfigured) {
     const session = await createPlatformCheckoutSession({
