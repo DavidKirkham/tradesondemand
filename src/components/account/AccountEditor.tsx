@@ -5,10 +5,12 @@ import { useState } from "react";
 
 export function AccountEditor({
   name,
+  email,
   phone,
   preferredContact,
 }: {
   name: string;
+  email: string;
   phone: string;
   preferredContact: string;
 }) {
@@ -33,6 +35,17 @@ export function AccountEditor({
 
   return (
     <div className="space-y-3 rounded-2xl border border-line bg-paper p-5">
+      <label className="block text-sm">
+        <span className="font-medium text-navy">Email</span>
+        <input
+          value={email}
+          readOnly
+          className="mt-2 h-11 w-full rounded-xl border border-line bg-cream/60 px-3 text-muted"
+        />
+        <span className="mt-1 block text-xs text-muted">
+          This is the login key from your first booking. It is not public.
+        </span>
+      </label>
       <label className="block text-sm">
         <span className="font-medium text-navy">Name</span>
         <input

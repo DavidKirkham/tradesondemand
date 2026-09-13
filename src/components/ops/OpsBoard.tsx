@@ -45,6 +45,8 @@ export type OpsCustomer = {
   bookingCount: number;
   paymentCount: number;
   createdAt: string;
+  addresses: string[];
+  jobs: { publicId: string; status: string; trade: string }[];
 };
 
 export type OpsPayment = {
@@ -76,6 +78,7 @@ export function OpsBoard({
   const [tab, setTab] = useState<"jobs" | "contractors" | "customers" | "payments">("jobs");
   const [filter, setFilter] = useState("ALL");
   const [appFilter, setAppFilter] = useState("ALL");
+  const [customerQuery, setCustomerQuery] = useState("");
   const [note, setNote] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
@@ -122,6 +125,14 @@ export function OpsBoard({
 
   const visibleJobs = initialBookings.filter((row) => filter === "ALL" || row.status === filter);
   const visibleApps = initialContractors.filter((row) => appFilter === "ALL" || row.status === appFilter);
+  const customerNeedle = customerQuery.trim().toLowerCase();
+  const visibleCustomers = initialCustomers.filter((row) => {
+    if (!customerNeedle) return true;
+    const haystack = [row.name, row.email, row.phone, ...row.addresses, ...row.jobs.map((job) => job.publicId)]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(customerNeedle);
+  });
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -352,12 +363,20 @@ export function OpsBoard({
             Private lookup only. Do not publish customer addresses. Contractors see job-site details
             on assigned tickets, not this list.
           </p>
-          {initialCustomers.length === 0 ? (
+          <input
+            value={customerQuery}
+            onChange={(event) => setCustomerQuery(event.target.value)}
+            placeholder="Search name, email, phone, or job ID"
+            className="h-11 w-full max-w-md rounded-xl border border-line bg-white px-3 text-sm"
+          />
+          {visibleCustomers.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
-              No customer profiles yet. They are created on first booking.
+              {initialCustomers.length === 0
+                ? "No customer profiles yet. They are created on first booking."
+                : "No customer matches that lookup."}
             </p>
           ) : (
-            initialCustomers.map((row) => (
+            visibleCustomers.map((row) => (
               <article key={row.id} className="rounded-2xl border border-line bg-paper p-5">
                 <h2 className="font-display text-2xl text-navy">{row.name}</h2>
                 <p className="text-sm text-muted">
@@ -366,6 +385,22 @@ export function OpsBoard({
                 <p className="mt-2 text-sm text-navy">
                   {row.bookingCount} jobs · {row.paymentCount} TOD payments
                 </p>
+                {row.addresses.length > 0 ? (
+                  <ul className="mt-3 space-y-1 text-sm text-navy">
+                    {row.addresses.map((address) => (
+                      <li key={address}>{address}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {row.jobs.length > 0 ? (
+                  <ul className="mt-3 space-y-1 text-sm text-muted">
+                    {row.jobs.map((job) => (
+                      <li key={job.publicId}>
+                        {job.publicId} · {getTrade(job.trade)?.name ?? job.trade} · {statusLabel(job.status)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </article>
             ))
           )}

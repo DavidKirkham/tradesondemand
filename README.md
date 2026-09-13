@@ -82,7 +82,7 @@ npx prisma db seed
 | `/contractors` | Approved contractor directory |
 | `/contractors/[slug]` | Public profile (approved only; slug, public ID, or id) |
 | `/contractors/signup` `/join` | Licensed contractor application |
-| `/account` | Private customer profile (email + phone after first book) |
+| `/account` `/account/[token]` | Private customer profile (cookie or magic link after first book) |
 | `/status` `/status/[token]` | Customer job status |
 | `/ops` | Jobs, contractor review, customers, TOD payments |
 | `/api/bookings` | Create booking |

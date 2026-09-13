@@ -17,7 +17,21 @@ export default async function OpsPage() {
     prisma.contractor.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.customer.findMany({
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { bookings: true, payments: true } } },
+      include: {
+        _count: { select: { bookings: true, payments: true } },
+        bookings: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            publicId: true,
+            status: true,
+            trade: true,
+            street: true,
+            city: true,
+            state: true,
+            zip: true,
+          },
+        },
+      },
     }),
     prisma.payment.findMany({
       orderBy: { createdAt: "desc" },
@@ -65,6 +79,19 @@ export default async function OpsPage() {
         bookingCount: row._count.bookings,
         paymentCount: row._count.payments,
         createdAt: row.createdAt.toISOString(),
+        addresses: Array.from(
+          new Map(
+            row.bookings.map((booking) => [
+              `${booking.street}|${booking.city}|${booking.state}|${booking.zip}`,
+              `${booking.street}, ${booking.city}, ${booking.state} ${booking.zip}`,
+            ]),
+          ).values(),
+        ),
+        jobs: row.bookings.map((booking) => ({
+          publicId: booking.publicId,
+          status: booking.status,
+          trade: booking.trade,
+        })),
       }))}
       initialPayments={payments.map((row) => ({
         id: row.id,
