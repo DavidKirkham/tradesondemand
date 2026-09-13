@@ -49,10 +49,12 @@ function parsePositiveCents(raw: string | undefined): number | null {
   return cents;
 }
 
-function smokeDepositCents(env: NodeJS.ProcessEnv = process.env): number | null {
+// Next.js only inlines NEXT_PUBLIC_* when accessed as process.env.NEXT_PUBLIC_*.
+// Do not pass process.env as a parameter — the client bundle will stay undefined.
+function smokeDepositCents(): number | null {
   return (
-    parsePositiveCents(env.SMOKE_DEPOSIT_CENTS) ??
-    parsePositiveCents(env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS)
+    parsePositiveCents(process.env.SMOKE_DEPOSIT_CENTS) ??
+    parsePositiveCents(process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS)
   );
 }
 
