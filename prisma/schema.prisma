@@ -78,6 +78,18 @@ model Contractor {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   bookings           Booking[]
+  passwordReset      ContractorPasswordReset?
+}
+
+model ContractorPasswordReset {
+  id           String     @id @default(cuid())
+  contractorId String     @unique
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  tokenHash    String     @unique
+  codeHash     String
+  expiresAt    DateTime
+  sentAt       DateTime
+  attempts     Int        @default(0)
 }
 
 model Customer {

@@ -47,6 +47,13 @@ export function buildAcceptEtaSms(input: {
   return `${input.businessName} accepted your Trades on Demand job ${input.publicId}. They said: ${eta} Call ${formatPhone(getDispatchPhone())} if you need the KC desk.`;
 }
 
+export function buildContractorPasswordResetSms(input: {
+  code: string;
+  resetUrl: string;
+}): string {
+  return `Trades on Demand password reset code: ${input.code}. Or open ${input.resetUrl} Expires in 20 min. Ignore if you did not ask.`;
+}
+
 export function buildContractorCustomerSms(input: {
   businessName: string;
   publicId: string;

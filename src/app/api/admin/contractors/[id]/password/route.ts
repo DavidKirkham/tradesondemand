@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prismaFailureResponse } from "@/lib/api-errors";
-import { resetContractorPasswordAccess } from "@/lib/contractor-auth";
+import { clearContractorPasswordReset, resetContractorPasswordAccess } from "@/lib/contractor-auth";
 import { hashContractorPassword, validateContractorPassword } from "@/lib/contractor-password";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
@@ -40,6 +40,7 @@ export async function POST(
         where: { id },
         data: { passwordHash, sessionToken: null },
       });
+      await clearContractorPasswordReset(id);
       return NextResponse.json({ ok: true, passwordSet: true });
     }
 

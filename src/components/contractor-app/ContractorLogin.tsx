@@ -175,8 +175,11 @@ export function ContractorLogin({
           </p>
         )}
         <p>
-          Forgot password? Call the KC desk. Dispatch resets it from Admin → Subcontractors. There is
-          no self-serve email reset in this release.
+          <Link href="/contractor/forgot" className="font-semibold text-ember">
+            Forgot password?
+          </Link>{" "}
+          We text a reset code to the phone on your application. Dispatch can still reset it from
+          Admin if you cannot get a text.
         </p>
         <p>
           Not approved yet?{" "}

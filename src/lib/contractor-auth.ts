@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isSchemaMismatchError } from "./api-errors";
 import { createContractorLoginToken } from "./contractor";
 import { CONTRACTOR_SESSION_COOKIE, contractorLoginHref } from "./contractor-paths";
 import { prisma } from "./prisma";
@@ -93,6 +94,14 @@ export async function issueContractorSession(
   return sessionToken;
 }
 
+export async function clearContractorPasswordReset(contractorId: string) {
+  try {
+    await prisma.contractorPasswordReset.deleteMany({ where: { contractorId } });
+  } catch (error) {
+    if (!isSchemaMismatchError(error)) throw error;
+  }
+}
+
 export async function resetContractorPasswordAccess(contractorId: string) {
   const loginToken = createContractorLoginToken();
   await prisma.contractor.update({
@@ -103,5 +112,6 @@ export async function resetContractorPasswordAccess(contractorId: string) {
       loginToken,
     },
   });
+  await clearContractorPasswordReset(contractorId);
   return { loginToken, invitePath: `/contractor/s/${loginToken}` };
 }

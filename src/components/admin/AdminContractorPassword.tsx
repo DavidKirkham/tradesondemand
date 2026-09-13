@@ -51,7 +51,7 @@ export function AdminContractorPassword({
       <h2 className="font-display text-2xl text-navy">Portal password</h2>
       <p className="text-sm text-muted">
         {status
-          ? "This shop has a password. Magic links no longer open the app by themselves."
+          ? "This shop has a password. They can reset it from /contractor → Forgot password (SMS to the application phone). Magic links no longer open the app by themselves."
           : "No password yet. They set one with the invite link, or with the email and phone on the application."}
       </p>
       {link && !status ? (

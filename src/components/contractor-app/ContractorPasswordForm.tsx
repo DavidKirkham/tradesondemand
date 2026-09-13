@@ -35,8 +35,8 @@ export function ContractorPasswordForm() {
     <div className="space-y-3 rounded-2xl border border-line bg-paper p-4">
       <h2 className="font-display text-xl text-navy">Password</h2>
       <p className="text-sm text-muted">
-        Change the password you use at /contractor. Dispatch can also issue a new set-password link
-        if you get locked out.
+        Change the password you use at /contractor. Locked out? Use Forgot password on the sign-in
+        page, or ask dispatch to issue a set-password link.
       </p>
       <label className="block text-sm">
         <span className="font-medium text-navy">Current password</span>
