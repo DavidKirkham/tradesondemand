@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { evaluateServiceArea } from "@/lib/kc-metro";
 import { rateForTrade, type PublicContractor } from "@/lib/contractor";
 import { formatUsd } from "@/lib/money";
+import { depositForBooking } from "@/lib/payments";
 import { getQuotePreview, type Urgency } from "@/lib/quotes";
 import { TRADES } from "@/lib/trades";
 import { CallButton } from "../CallButton";
@@ -74,6 +75,21 @@ export function BookingWizard({
   const selectedTrade = TRADES.find((trade) => trade.slug === form.trade);
   const quote =
     form.trade && form.urgency ? getQuotePreview(form.trade, form.urgency) : null;
+  const deposit =
+    form.trade && form.urgency
+      ? depositForBooking({
+          urgency: form.urgency,
+          trade: form.trade,
+          contractor: partner
+            ? {
+                hourlyRateCents: partner.hourlyRateCents,
+                minimumChargeCents: partner.minimumChargeCents,
+                emergencyRateCents: partner.emergencyRateCents,
+                tradeRates: partner.tradeRates,
+              }
+            : null,
+        })
+      : null;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => {
@@ -363,10 +379,15 @@ export function BookingWizard({
               </p>
             </div>
             <div className="rounded-2xl bg-navy px-5 py-6 text-cream">
-              <p className="stamp text-xs text-gold">{quote.urgency}</p>
+              <p className="stamp text-xs text-gold">Pay Trades on Demand</p>
               <p className="mt-2 font-display text-2xl">{quote.headline}</p>
-              <p className="mt-4 text-3xl font-semibold text-gold">{quote.holdLabel}</p>
-              <p className="mt-3 text-sm leading-6 text-cream/80">{quote.holdDetail}</p>
+              <p className="mt-4 text-3xl font-semibold text-gold">
+                {deposit && deposit.amountCents > 0 ? formatUsd(deposit.amountCents) : "No deposit now"}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-cream/80">
+                {deposit?.summary ?? quote.holdDetail} The contractor is not the merchant of record
+                and never sees your card.
+              </p>
             </div>
             <HiringSummary partner={partner} trade={form.trade} />
             <p className="text-sm leading-6 text-muted">{quote.nextStep}</p>
@@ -403,10 +424,11 @@ export function BookingWizard({
               inputMode="email"
             />
             <p className="rounded-xl bg-navy/5 px-4 py-3 text-sm text-navy">
-              Checkout is with Trades on Demand. The selected contractor never sees your card and
-              is not the merchant of record.
+              You pay Trades on Demand
+              {deposit ? ` — ${deposit.summary}` : ""}. The contractor is not the merchant of record
+              and never sees your card. TOD pays the partner later.
             </p>
-            <Review form={form} partner={partner} />
+            <Review form={form} partner={partner} depositLabel={deposit?.summary ?? "TOD checkout"} />
           </section>
         ) : null}
 
@@ -449,7 +471,11 @@ export function BookingWizard({
               disabled={submitting}
               className="h-12 rounded-full bg-ember px-6 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {submitting ? "Charging TOD deposit…" : "Pay TOD & confirm booking"}
+              {submitting
+                ? "Charging TOD deposit…"
+                : deposit && deposit.amountCents > 0
+                  ? `Pay TOD ${formatUsd(deposit.amountCents)} & confirm`
+                  : "Pay TOD & confirm booking"}
             </button>
           )}
         </div>
@@ -485,7 +511,15 @@ function Field({
   );
 }
 
-function Review({ form, partner }: { form: FormState; partner: PublicContractor | null }) {
+function Review({
+  form,
+  partner,
+  depositLabel,
+}: {
+  form: FormState;
+  partner: PublicContractor | null;
+  depositLabel: string;
+}) {
   const trade = useMemo(() => TRADES.find((item) => item.slug === form.trade), [form.trade]);
   return (
     <div className="space-y-3">
@@ -510,6 +544,10 @@ function Review({ form, partner }: { form: FormState; partner: PublicContractor 
           <dd className="text-right font-medium text-navy">
             {partner ? partner.businessName : "First available match"}
           </dd>
+        </div>
+        <div className="flex justify-between gap-4 py-1">
+          <dt className="text-muted">Pay TOD</dt>
+          <dd className="text-right font-medium text-navy">{depositLabel}</dd>
         </div>
       </dl>
     </div>

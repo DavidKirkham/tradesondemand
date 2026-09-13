@@ -90,7 +90,8 @@ export default async function ContractorProfilePage({
           {contractor.emergencyRateCents
             ? ` · after-hours ${formatUsd(contractor.emergencyRateCents)}`
             : ""}
-          . Customers pay Trades on Demand, not this shop directly.
+          . Customers pay Trades on Demand, not this shop directly. TOD pays this partner — they
+          never collect your card.
         </p>
         <ul className="mt-4 space-y-1 text-sm text-cream/80">
           {contractor.tradeRates.map((row) => {

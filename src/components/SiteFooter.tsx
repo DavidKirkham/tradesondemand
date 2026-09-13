@@ -64,8 +64,8 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-white/10 px-4 py-6">
         <div className="mx-auto max-w-6xl text-xs leading-6 text-cream/55">
-          Service area: {KC_METRO_CITIES.join(" · ")} and nearby KC ZIP codes. v1 bookings store
-          locally (SQLite) and do not charge cards or send SMS.
+          Service area: {KC_METRO_CITIES.join(" · ")} and nearby KC ZIP codes. You pay Trades on
+          Demand; v1 stubs the card charge. No SMS.
         </div>
       </div>
     </footer>

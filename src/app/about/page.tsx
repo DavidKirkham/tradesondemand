@@ -27,7 +27,8 @@ export default function AboutPage() {
         <p>
           v1 is the customer booking loop, public profiles for approved licensed partners, and a
           lightweight ops board. Licensed MO/KS contractors apply at /contractors/signup; they do
-          not get a job-accepting app yet. Payments and SMS are stubbed.
+          not get a job-accepting app yet. You pay Trades on Demand; we pay the partner. Card
+          checkout is stubbed in v1. SMS is out of scope.
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">

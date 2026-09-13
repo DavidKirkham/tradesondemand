@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CallButton } from "@/components/CallButton";
 import { statusDetail, statusLabel } from "@/lib/booking";
+import { formatUsd } from "@/lib/money";
+import { paymentStatusLabel, paymentTypeLabel } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
 
@@ -20,7 +22,11 @@ export default async function StatusDetailPage({
   const { token } = await params;
   const booking = await prisma.booking.findFirst({
     where: { OR: [{ token }, { publicId: token }] },
-    include: { events: { orderBy: { createdAt: "asc" } }, contractor: true },
+    include: {
+      events: { orderBy: { createdAt: "asc" } },
+      contractor: true,
+      payments: { orderBy: { createdAt: "desc" } },
+    },
   });
 
   if (!booking) notFound();
@@ -61,6 +67,29 @@ export default async function StatusDetailPage({
           <Row label="Quote" value={booking.quoteSummary} />
           <Row label="Problem" value={booking.problem} />
         </dl>
+        {booking.payments.length > 0 ? (
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="stamp text-[0.65rem] text-muted">You pay Trades on Demand</p>
+            <ul className="mt-2 space-y-2 text-sm text-navy">
+              {booking.payments.map((payment) => (
+                <li key={payment.id} className="flex justify-between gap-3">
+                  <span>
+                    {paymentTypeLabel(payment.type)} · {payment.publicId}
+                  </span>
+                  <span className="text-right">
+                    {formatUsd(payment.amountCents)}
+                    <span className="mt-0.5 block text-xs text-muted">
+                      {paymentStatusLabel(payment.status)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-muted">
+              The contractor never sees your card. TOD pays the partner separately.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <ol className="mt-8 space-y-3">

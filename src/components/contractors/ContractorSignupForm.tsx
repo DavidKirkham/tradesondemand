@@ -303,6 +303,23 @@ export function ContractorSignupForm() {
         </label>
       </section>
 
+      <section className="space-y-3">
+        <h2 className="font-display text-xl text-navy">Payouts via TOD</h2>
+        <p className="text-sm text-muted">
+          Customers pay Trades on Demand. We pay you. Do not collect cards or cash as the merchant
+          on TOD jobs.
+        </p>
+        <label className="block">
+          <span className="text-sm font-medium text-navy">Payout method</span>
+          <input
+            value="Payouts via TOD — coming later"
+            readOnly
+            disabled
+            className="mt-2 h-12 w-full rounded-xl border border-line bg-cream/60 px-3 text-sm text-muted"
+          />
+        </label>
+      </section>
+
       <label className="flex items-start gap-3 text-sm">
         <input
           type="checkbox"

@@ -10,7 +10,7 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 - **KC metro only.** Kansas City (MO and KS), Overland Park, Olathe, Independence, Lee’s Summit, Shawnee, Lenexa, Leawood, Blue Springs, Liberty, and nearby ZIPs. Non-metro cities and ZIPs are rejected with a clear message.
 - **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` if needed; the UI works without env setup.
 - **Licensed contractors.** Partners apply at `/contractors/signup`. Ops approves/rejects. Approved shops get a public profile and can be chosen during booking.
-- **Marketplace payments.** Customers pay **Trades on Demand**. TOD pays contractors. No pay-the-pro-directly flow. Stripe is stubbed; payment rows still exist.
+- **Marketplace payments.** Customer → **Trades on Demand** → contractor payout. No pay-the-pro-directly flow, bank fields, or contractor checkout. Stripe is stubbed; `Payment` rows (deposit / balance / adjustment) still exist.
 - **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, ops review + TOD ledger. No contractor mobile app. No live Stripe or SMS.
 
 ## Core booking loop
@@ -19,9 +19,15 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 2. Address / ZIP (KC metro gate)  
 3. Emergency vs routine  
 4. Licensed contractor (or first available)  
-5. Quote / deposit clarity (policy stub — no card charge)  
-6. Confirm (name, phone, email)  
-7. Job status → done  
+5. Quote / TOD deposit (selected contractor rates or first-available hold; stub charge)  
+6. Confirm (name, phone, email) — pay Trades on Demand  
+7. Job status + private receipts → done  
+
+## Marketplace payments
+
+Customers pay **Trades on Demand** for deposits, trip minimums, and later job balances. Contractors are paid by TOD (payouts). There is no “pay contractor directly” CTA, and contractor signup does not collect bank details in v1.
+
+`Payment` records belong to TOD (`bookingId`, amount, `DEPOSIT` | `BALANCE` | `ADJUSTMENT`, `PENDING` | `PAID` | `REFUNDED`). Ops can mark paid/refunded. Customer `/account` and job status show receipts, not card numbers. 
 
 ## Stack
 

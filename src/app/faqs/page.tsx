@@ -21,7 +21,7 @@ const FAQS = [
   },
   {
     q: "Will you take a payment online?",
-    a: "You pay Trades on Demand — never the contractor directly. v1 stubs the card charge but still creates a TOD payment/receipt. TOD pays the partner later. SMS is still out of scope.",
+    a: "You pay Trades on Demand — never the contractor directly. Booking creates a TOD deposit/receipt (card charge is stubbed in v1). Later balances also go to TOD. We pay the partner. SMS is still out of scope.",
   },
   {
     q: "I rent in Midtown / a Johnson County apartment. Can I book?",
