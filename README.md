@@ -116,7 +116,7 @@ Password-protected owner UI (same cookie as the old `/ops` board; `/ops` redirec
 - `/admin/contractors` / `/admin/contractors/[id]` — all statuses, filter by trade, edit profile/rates, approve/reject, assigned jobs  
 - `/admin/jobs` — booking overview with links back to client/subcontractor  
 
-Set `ADMIN_PASSWORD` (or keep `OPS_PASSWORD`). Default in `.env.example` is `dispatch`. Client records stay private; they are not listed on `/contractors`.
+Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variables) for **Production and Preview**. `/admin` and `/ops` read `process.env.ADMIN_PASSWORD`, then `process.env.OPS_PASSWORD` if the first is unset. There is no default password in the app — do not use a documented example value in production. Locally, put your own value in `.env` (see `.env.example`; that blank is a local-dev placeholder only). Client records stay private; they are not listed on `/contractors`.
 
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
@@ -143,8 +143,8 @@ npx prisma db seed
 | `POSTGRES_PRISMA_URL` / `POSTGRES_URL` | Alias | Neon/Vercel inject these; the app maps them to `DATABASE_URL`. |
 | `DATABASE_URL_UNPOOLED` | No | Optional Neon direct URL; used if `DATABASE_URL` is unset. |
 | `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` | No | Tap-to-call. Hardcoded default is **8165160735** — displays **(816) 516-0735**, links `tel:+18165160735`. Demos work with no env file. |
-| `ADMIN_PASSWORD` | Yes (or `OPS_PASSWORD`) | Password for `/admin`. Falls back to `OPS_PASSWORD`, then `dispatch`. |
-| `OPS_PASSWORD` | Compat | Still accepted if `ADMIN_PASSWORD` is unset. `/ops` redirects to `/admin`. |
+| `ADMIN_PASSWORD` | Runtime (Vercel) | Password for `/admin`. Set on Vercel for Production + Preview. No code default. |
+| `OPS_PASSWORD` | Compat | Used only if `ADMIN_PASSWORD` is unset. `/ops` redirects to `/admin`. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |
 | `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
 | `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |

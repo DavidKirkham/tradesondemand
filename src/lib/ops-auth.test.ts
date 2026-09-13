@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { opsPassword, passwordMatches } from "./ops-auth";
+import { isAdminPasswordConfigured, opsPassword, passwordMatches } from "./ops-auth";
 
 const keys = ["ADMIN_PASSWORD", "OPS_PASSWORD"] as const;
 const snapshot = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
@@ -21,11 +21,19 @@ describe("opsPassword", () => {
     expect(passwordMatches("legacy-ops")).toBe(false);
   });
 
-  it("falls back to OPS_PASSWORD then dispatch", () => {
+  it("falls back to OPS_PASSWORD when ADMIN_PASSWORD is unset", () => {
     delete process.env.ADMIN_PASSWORD;
     process.env.OPS_PASSWORD = "legacy-ops";
     expect(opsPassword()).toBe("legacy-ops");
+    expect(passwordMatches("legacy-ops")).toBe(true);
+  });
+
+  it("has no hardcoded default when both env vars are empty", () => {
+    delete process.env.ADMIN_PASSWORD;
     delete process.env.OPS_PASSWORD;
-    expect(opsPassword()).toBe("dispatch");
+    expect(opsPassword()).toBe("");
+    expect(isAdminPasswordConfigured()).toBe(false);
+    expect(passwordMatches("")).toBe(false);
+    expect(passwordMatches("dispatch")).toBe(false);
   });
 });
