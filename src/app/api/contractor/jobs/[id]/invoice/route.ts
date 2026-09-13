@@ -10,10 +10,11 @@ import {
   invoiceIsLocked,
   invoicePaymentNote,
   invoiceStatusAfterSend,
+  persistableInvoiceMoney,
   totalsFromLines,
   validateInvoicePayload,
 } from "@/lib/invoice";
-import { isMissingInvoiceModel } from "@/lib/invoice-columns";
+import { isMissingInvoiceMarkupColumn, isMissingInvoiceModel } from "@/lib/invoice-columns";
 import { prisma } from "@/lib/prisma";
 import { appOriginFromRequest } from "@/lib/stripe";
 import { buildInvoiceSms, sendCustomerSms } from "@/lib/sms";
@@ -45,6 +46,13 @@ export async function POST(
   try {
     return await saveContractorInvoice(request, id, contractor, body);
   } catch (error) {
+    if (isMissingInvoiceMarkupColumn(error)) {
+      try {
+        return await saveContractorInvoice(request, id, contractor, body, true);
+      } catch (retryError) {
+        return prismaFailureResponse(retryError, "Could not save that invoice. Try again.");
+      }
+    }
     if (isMissingInvoiceModel(error)) {
       return prismaFailureResponse(error, "Could not save that invoice. Try again.");
     }
@@ -62,6 +70,7 @@ async function saveContractorInvoice(
     materials?: { description?: string; cost?: string }[];
     note?: string;
   },
+  omitMarkupColumns = false,
 ) {
   const booking = await prisma.booking.findUnique({
     where: { id },
@@ -95,6 +104,7 @@ async function saveContractorInvoice(
   const publish = send || alreadySent;
   const depositPaidCents = depositCreditCents(booking.payments, existing?.paymentId);
   const totals = totalsFromLines(parsed.lines, depositPaidCents);
+  const money = persistableInvoiceMoney(totals, omitMarkupColumns);
   const nextStatus = publish ? invoiceStatusAfterSend(totals.amountDueCents) : "DRAFT";
   const now = new Date();
 
@@ -105,13 +115,7 @@ async function saveContractorInvoice(
           data: {
             contractorId: contractor.id,
             status: nextStatus,
-            laborHours: totals.laborHours,
-            laborRateCents: totals.laborRateCents,
-            laborCents: totals.laborCents,
-            materialsCents: totals.materialsCents,
-            subtotalCents: totals.subtotalCents,
-            depositPaidCents: totals.depositPaidCents,
-            amountDueCents: totals.amountDueCents,
+            ...money,
             note: parsed.note,
             sentAt: publish ? (existing.sentAt ?? now) : existing.sentAt,
             paidAt: nextStatus === "PAID" ? (existing.paidAt ?? now) : null,
@@ -124,13 +128,7 @@ async function saveContractorInvoice(
             bookingId: booking.id,
             contractorId: contractor.id,
             status: nextStatus,
-            laborHours: totals.laborHours,
-            laborRateCents: totals.laborRateCents,
-            laborCents: totals.laborCents,
-            materialsCents: totals.materialsCents,
-            subtotalCents: totals.subtotalCents,
-            depositPaidCents: totals.depositPaidCents,
-            amountDueCents: totals.amountDueCents,
+            ...money,
             note: parsed.note,
             sentAt: publish ? now : null,
             paidAt: nextStatus === "PAID" ? now : null,
@@ -155,6 +153,7 @@ async function saveContractorInvoice(
         publicId: saved.publicId,
         depositPaidCents: totals.depositPaidCents,
         subtotalCents: totals.subtotalCents,
+        customerSubtotalCents: totals.customerSubtotalCents,
       });
       if (existing?.payment && existing.payment.status === "PENDING") {
         const amountChanged = existing.payment.amountCents !== totals.amountDueCents;

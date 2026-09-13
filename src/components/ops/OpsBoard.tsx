@@ -6,6 +6,7 @@ import { useState } from "react";
 import { BOOKING_STATUSES, statusLabel } from "@/lib/booking";
 import { contractorStatusLabel, type PublicContractor } from "@/lib/contractor";
 import { formatUsd } from "@/lib/money";
+import { formatShopAndCustomerUsd } from "@/lib/pricing";
 import { paymentStatusLabel, paymentTypeLabel } from "@/lib/payments";
 import { getTrade } from "@/lib/trades";
 
@@ -311,18 +312,19 @@ export function OpsBoard({
                   </p>
                   <div className="mt-3 rounded-xl bg-cream/70 px-3 py-3 text-sm text-navy">
                     <p>
-                      Primary {formatUsd(row.hourlyRateCents)}/hr · service-call min{" "}
-                      {formatUsd(row.minimumChargeCents)}
+                      Primary {formatShopAndCustomerUsd(row.hourlyRateCents)}/hr · service-call min{" "}
+                      {formatShopAndCustomerUsd(row.minimumChargeCents)}
                       {row.emergencyRateCents
-                        ? ` · after-hours ${formatUsd(row.emergencyRateCents)}`
+                        ? ` · after-hours ${formatShopAndCustomerUsd(row.emergencyRateCents)}`
                         : ""}
                     </p>
                     {row.tradeRates.length > 0 ? (
                       <ul className="mt-2 space-y-1 text-muted">
                         {row.tradeRates.map((rate) => (
                           <li key={rate.slug}>
-                            {getTrade(rate.slug)?.name ?? rate.slug}: {formatUsd(rate.hourlyCents)}
-                            /hr · {formatUsd(rate.minimumCents)} trip min
+                            {getTrade(rate.slug)?.name ?? rate.slug}:{" "}
+                            {formatShopAndCustomerUsd(rate.hourlyCents)}/hr ·{" "}
+                            {formatShopAndCustomerUsd(rate.minimumCents)} trip min
                           </li>
                         ))}
                       </ul>

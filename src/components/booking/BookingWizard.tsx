@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { evaluateServiceArea } from "@/lib/kc-metro";
 import { rateForTrade, type PublicContractor } from "@/lib/contractor";
 import { formatUsd } from "@/lib/money";
+import { formatCustomerUsd } from "@/lib/pricing";
 import { depositForBooking } from "@/lib/payments";
 import { getQuotePreview, type Urgency } from "@/lib/quotes";
 import { TRADES } from "@/lib/trades";
@@ -600,7 +601,7 @@ function HiringSummary({ partner, trade }: { partner: PublicContractor | null; t
         <p className="text-xs font-semibold uppercase tracking-wide text-ok">Who you&apos;re hiring</p>
         <p className="font-display text-lg text-navy">{partner.businessName}</p>
         <p className="text-sm text-navy">
-          {formatUsd(rate.hourlyCents)}/hr · {formatUsd(rate.minimumCents)} trip min · {partner.licenseState}{" "}
+          {formatCustomerUsd(rate.hourlyCents)}/hr · {formatCustomerUsd(rate.minimumCents)} trip min · {partner.licenseState}{" "}
           licensed
         </p>
         <Link href={`/contractors/${partner.slug}`} className="mt-1 inline-block text-sm font-semibold text-ember">

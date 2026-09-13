@@ -252,6 +252,9 @@ export function AdminContractorEditor({
         </div>
       </fieldset>
 
+      <p className="text-xs text-muted">
+        Shop rates the contractor earns. Customer checkout and public profiles add a 20% TOD markup.
+      </p>
       <div className="grid gap-3 md:grid-cols-3">
         <Field label="Hourly rate (USD)" value={form.hourlyRate} onChange={(value) => set("hourlyRate", value)} />
         <Field

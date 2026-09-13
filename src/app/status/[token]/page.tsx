@@ -112,9 +112,12 @@ export default async function StatusDetailPage({
                 laborCents={invoice.laborCents}
                 materialsCents={invoice.materialsCents}
                 subtotalCents={invoice.subtotalCents}
+                customerSubtotalCents={invoice.customerSubtotalCents}
+                markupCents={invoice.markupCents}
                 depositPaidCents={invoice.depositPaidCents}
                 amountDueCents={invoice.amountDueCents}
                 note={invoice.note}
+                variant="customer"
               />
             </div>
             {invoice.amountDueCents > 0 ? (

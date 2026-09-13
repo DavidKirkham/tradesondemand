@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { rateForTrade, type PublicContractor } from "@/lib/contractor";
-import { formatUsd } from "@/lib/money";
+import { formatCustomerUsd } from "@/lib/pricing";
 import { ContractorAvatar } from "../contractors/ContractorAvatar";
 
 export function ContractorPicker({
@@ -85,8 +85,8 @@ export function ContractorPicker({
                   </span>
                 </span>
                 <span className="mt-1 block text-sm text-navy">
-                  {formatUsd(rate.hourlyCents)}/hr · {formatUsd(rate.minimumCents)} min
-                  {showEmergency ? ` · after-hours ${formatUsd(contractor.emergencyRateCents ?? 0)}` : ""}
+                  {formatCustomerUsd(rate.hourlyCents)}/hr · {formatCustomerUsd(rate.minimumCents)} min
+                  {showEmergency ? ` · after-hours ${formatCustomerUsd(contractor.emergencyRateCents ?? 0)}` : ""}
                 </span>
                 <span className="mt-1 block text-xs text-muted">{contractor.serviceArea}</span>
                 <Link

@@ -163,6 +163,8 @@ model Invoice {
   laborCents       Int           @default(0)
   materialsCents   Int           @default(0)
   subtotalCents    Int
+  customerSubtotalCents Int      @default(0)
+  markupCents      Int           @default(0)
   depositPaidCents Int           @default(0)
   amountDueCents   Int
   note             String?

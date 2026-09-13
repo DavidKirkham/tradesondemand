@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ContractorAvatar } from "@/components/contractors/ContractorAvatar";
 import { rateForTrade, toPublicContractor } from "@/lib/contractor";
 import { findApprovedContractor } from "@/lib/contractor-lookup";
-import { formatUsd } from "@/lib/money";
+import { formatCustomerUsd } from "@/lib/pricing";
 import { getTrade } from "@/lib/trades";
 
 export const dynamic = "force-dynamic";
@@ -81,25 +81,25 @@ export default async function ContractorProfilePage({
       </div>
 
       <div className="mt-4 rounded-2xl bg-navy p-6 text-cream">
-        <p className="stamp text-xs text-gold">Rates</p>
+        <p className="stamp text-xs text-gold">Customer rates</p>
         <p className="mt-2 text-3xl font-semibold text-gold">
-          {formatUsd(contractor.hourlyRateCents)}/hr
+          {formatCustomerUsd(contractor.hourlyRateCents)}/hr
         </p>
         <p className="mt-1 text-sm text-cream/80">
-          {formatUsd(contractor.minimumChargeCents)} minimum / trip fee
+          {formatCustomerUsd(contractor.minimumChargeCents)} minimum / trip fee
           {contractor.emergencyRateCents
-            ? ` · after-hours ${formatUsd(contractor.emergencyRateCents)}`
+            ? ` · after-hours ${formatCustomerUsd(contractor.emergencyRateCents)}`
             : ""}
-          . Customers pay Trades on Demand, not this shop directly. TOD pays this partner — they
-          never collect your card.
+          . Includes the TOD platform fee. Customers pay Trades on Demand, not this shop
+          directly. TOD pays this partner — they never collect your card.
         </p>
         <ul className="mt-4 space-y-1 text-sm text-cream/80">
           {contractor.tradeRates.map((row) => {
             const rate = rateForTrade(contractor, row.slug);
             return (
               <li key={row.slug}>
-                {getTrade(row.slug)?.name ?? row.slug}: {formatUsd(rate.hourlyCents)}/hr ·{" "}
-                {formatUsd(rate.minimumCents)} min
+                {getTrade(row.slug)?.name ?? row.slug}: {formatCustomerUsd(rate.hourlyCents)}/hr ·{" "}
+                {formatCustomerUsd(rate.minimumCents)} min
               </li>
             );
           })}

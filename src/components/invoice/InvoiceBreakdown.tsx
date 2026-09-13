@@ -1,4 +1,11 @@
-import { formatHours, invoiceStatusLabel } from "@/lib/invoice";
+import {
+  customerFacingInvoiceLines,
+  customerFacingInvoiceTotals,
+  formatHours,
+  invoiceHasStoredMarkup,
+  invoiceStatusLabel,
+  type InvoiceMoneyFields,
+} from "@/lib/invoice";
 import { formatUsd } from "@/lib/money";
 
 export type InvoiceBreakdownLine = {
@@ -17,22 +24,37 @@ export function InvoiceBreakdown({
   laborCents,
   materialsCents,
   subtotalCents,
+  customerSubtotalCents,
+  markupCents,
   depositPaidCents,
   amountDueCents,
   note,
-}: {
+  variant = "customer",
+}: InvoiceMoneyFields & {
   publicId?: string | null;
   status: string;
   lines: InvoiceBreakdownLine[];
-  laborCents: number;
-  materialsCents: number;
-  subtotalCents: number;
-  depositPaidCents: number;
-  amountDueCents: number;
   note?: string | null;
+  variant?: "customer" | "contractor" | "admin";
 }) {
-  const labor = lines.filter((line) => line.kind === "LABOR");
-  const materials = lines.filter((line) => line.kind === "MATERIAL");
+  const money = {
+    laborCents,
+    materialsCents,
+    subtotalCents,
+    customerSubtotalCents,
+    markupCents,
+    depositPaidCents,
+    amountDueCents,
+  };
+  const markedUp = invoiceHasStoredMarkup(money);
+  const customerTotals = customerFacingInvoiceTotals(money);
+  const displayLines =
+    variant === "customer" ? customerFacingInvoiceLines(lines, markedUp) : lines;
+  const displayLabor = variant === "customer" ? customerTotals.laborCents : laborCents;
+  const displayMaterials = variant === "customer" ? customerTotals.materialsCents : materialsCents;
+  const displaySubtotal = variant === "customer" ? customerTotals.subtotalCents : subtotalCents;
+  const labor = displayLines.filter((line) => line.kind === "LABOR");
+  const materials = displayLines.filter((line) => line.kind === "MATERIAL");
 
   return (
     <div className="space-y-3 text-sm text-navy">
@@ -75,22 +97,34 @@ export function InvoiceBreakdown({
       ) : null}
 
       <dl className="space-y-1 border-t border-line pt-2">
-        {laborCents > 0 ? <TotalRow label="Labor" value={laborCents} /> : null}
-        {materialsCents > 0 ? <TotalRow label="Materials" value={materialsCents} /> : null}
-        <TotalRow label="Subtotal" value={subtotalCents} />
+        {displayLabor > 0 ? <TotalRow label="Labor" value={displayLabor} /> : null}
+        {displayMaterials > 0 ? <TotalRow label="Materials" value={displayMaterials} /> : null}
+        <TotalRow
+          label={variant === "customer" ? "Subtotal" : "Shop subtotal"}
+          value={displaySubtotal}
+        />
+        {variant !== "customer" && markedUp ? (
+          <>
+            <TotalRow label="TOD 20% markup" value={customerTotals.markupCents} />
+            <TotalRow label="Customer total" value={customerTotals.subtotalCents} />
+          </>
+        ) : variant === "admin" && !markedUp ? (
+          <p className="text-xs text-muted">Legacy invoice — stored before platform markup.</p>
+        ) : null}
         {depositPaidCents > 0 ? (
           <TotalRow label="Deposit already paid to TOD" value={-depositPaidCents} />
         ) : null}
         <div className="flex justify-between gap-3 pt-1 font-semibold">
-          <dt>Owed to TOD</dt>
+          <dt>{variant === "customer" ? "Owed to TOD" : "Customer owes TOD"}</dt>
           <dd>{formatUsd(amountDueCents)}</dd>
         </div>
       </dl>
 
       {note ? <p className="text-xs text-muted">{note}</p> : null}
       <p className="text-xs text-muted">
-        Customers pay Trades on Demand (Trademark Walls). The contractor is not the merchant of
-        record.
+        {variant === "customer"
+          ? "Customers pay Trades on Demand (Trademark Walls). Prices include the TOD platform fee. The contractor is not the merchant of record."
+          : "Customers pay Trades on Demand (Trademark Walls) at shop amounts plus a 20% platform fee. You are not the merchant of record."}
       </p>
     </div>
   );

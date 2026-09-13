@@ -157,9 +157,12 @@ async function JobDetail({ id }: { id: string }) {
               laborCents={invoice.laborCents}
               materialsCents={invoice.materialsCents}
               subtotalCents={invoice.subtotalCents}
+              customerSubtotalCents={invoice.customerSubtotalCents}
+              markupCents={invoice.markupCents}
               depositPaidCents={invoice.depositPaidCents}
               amountDueCents={invoice.amountDueCents}
               note={invoice.note}
+              variant="admin"
             />
           </div>
         </section>

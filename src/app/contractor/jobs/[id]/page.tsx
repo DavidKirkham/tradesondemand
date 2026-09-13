@@ -154,6 +154,8 @@ export default async function ContractorJobDetailPage({
                     laborCents: invoice.laborCents,
                     materialsCents: invoice.materialsCents,
                     subtotalCents: invoice.subtotalCents,
+                    customerSubtotalCents: invoice.customerSubtotalCents,
+                    markupCents: invoice.markupCents,
                     depositPaidCents: invoice.depositPaidCents,
                     amountDueCents: invoice.amountDueCents,
                     lines: toInvoiceLineDrafts(invoice.lines),

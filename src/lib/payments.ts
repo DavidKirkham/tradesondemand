@@ -1,5 +1,6 @@
 import { formatUsd } from "./money";
 import { rateForTrade, type TradeRate } from "./contractor";
+import { applyPlatformMarkupCents, FIRST_AVAILABLE_EMERGENCY_HOLD_CENTS } from "./pricing";
 
 export const PAYMENT_TYPES = ["DEPOSIT", "BALANCE", "ADJUSTMENT"] as const;
 export const PAYMENT_STATUSES = ["PENDING", "PAID", "REFUNDED"] as const;
@@ -80,22 +81,26 @@ export function depositForBooking(input: {
   if (input.contractor) {
     const rate = rateForTrade(input.contractor, input.trade);
     if (input.urgency === "emergency" && input.contractor.emergencyRateCents) {
+      const amountCents = applyPlatformMarkupCents(input.contractor.emergencyRateCents);
       return {
-        amountCents: input.contractor.emergencyRateCents,
-        summary: `TOD after-hours hold ${formatUsd(input.contractor.emergencyRateCents)} (credited to the job)`,
+        amountCents,
+        summary: `TOD after-hours hold ${formatUsd(amountCents)} (credited to the job)`,
         checkoutKind: "deposit",
       };
     }
+    const amountCents = applyPlatformMarkupCents(rate.minimumCents);
+    const hourlyCents = applyPlatformMarkupCents(rate.hourlyCents);
     return {
-      amountCents: rate.minimumCents,
-      summary: `TOD trip minimum ${formatUsd(rate.minimumCents)} at ${formatUsd(rate.hourlyCents)}/hr`,
+      amountCents,
+      summary: `TOD trip minimum ${formatUsd(amountCents)} at ${formatUsd(hourlyCents)}/hr`,
       checkoutKind: "minimum",
     };
   }
   if (input.urgency === "emergency") {
+    const amountCents = applyPlatformMarkupCents(FIRST_AVAILABLE_EMERGENCY_HOLD_CENTS);
     return {
-      amountCents: 14900,
-      summary: "TOD emergency dispatch hold $149.00 (credited to the job)",
+      amountCents,
+      summary: `TOD emergency dispatch hold ${formatUsd(amountCents)} (credited to the job)`,
       checkoutKind: "deposit",
     };
   }

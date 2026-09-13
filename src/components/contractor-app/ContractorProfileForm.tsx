@@ -126,6 +126,9 @@ export function ContractorProfileForm({
           className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2"
         />
       </label>
+      <p className="text-xs text-muted">
+        Enter what your shop earns. Customers are charged these amounts plus a 20% TOD platform fee.
+      </p>
       <div className="grid grid-cols-2 gap-2">
         <Field
           label="Hourly"

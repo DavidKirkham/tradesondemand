@@ -21,6 +21,7 @@ describe("validateBookingInput", () => {
     if (result.ok) {
       expect(result.data.zip).toBe("64112");
       expect(result.data.quoteSummary).toMatch(/dispatch hold/i);
+      expect(result.data.quoteSummary).toContain("$178.80");
     }
   });
 
