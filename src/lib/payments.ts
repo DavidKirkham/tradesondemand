@@ -41,6 +41,14 @@ export function paymentStatusLabel(status: string): string {
   }
 }
 
+function smokeDepositCents(env: NodeJS.ProcessEnv = process.env): number | null {
+  const raw = env.SMOKE_DEPOSIT_CENTS?.trim();
+  if (!raw || !/^\d+$/.test(raw)) return null;
+  const cents = Number(raw);
+  if (!Number.isInteger(cents) || cents <= 0) return null;
+  return cents;
+}
+
 export function depositForBooking(input: {
   urgency: string;
   contractor?: {
@@ -51,6 +59,15 @@ export function depositForBooking(input: {
   } | null;
   trade: string;
 }): { amountCents: number; summary: string; checkoutKind: "deposit" | "minimum" | "balance" } {
+  const smokeCents = smokeDepositCents();
+  if (smokeCents !== null) {
+    return {
+      amountCents: smokeCents,
+      summary: `TOD smoke deposit ${formatUsd(smokeCents)}`,
+      checkoutKind: "deposit",
+    };
+  }
+
   if (input.contractor) {
     const rate = rateForTrade(input.contractor, input.trade);
     if (input.urgency === "emergency" && input.contractor.emergencyRateCents) {
