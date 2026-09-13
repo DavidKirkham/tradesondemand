@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { KC_METRO_CITIES } from "@/lib/kc-metro";
 import { formatPhone, getDispatchPhone } from "@/lib/phone";
-import { BrandMark } from "./BrandMark";
 import { CallButton } from "./CallButton";
+import { HomeBrandLink } from "./HomeBrandLink";
 
 export function SiteFooter() {
   const phone = formatPhone(getDispatchPhone());
@@ -11,7 +11,7 @@ export function SiteFooter() {
     <footer className="mt-auto border-t border-navy/10 bg-navy text-cream">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-4">
         <div className="md:col-span-2">
-          <BrandMark light />
+          <HomeBrandLink light />
           <p className="mt-4 max-w-md text-sm leading-6 text-cream/75">
             Any trade service in the Kansas City metro — emergency or routine. We stay on this side
             of the state line corridor on purpose so a local partner can actually get to you.

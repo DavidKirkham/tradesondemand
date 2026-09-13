@@ -12,6 +12,12 @@ export default function NotFound() {
       </p>
       <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
         <Link
+          href="/"
+          className="inline-flex h-12 items-center justify-center rounded-full border border-line px-5 text-sm font-semibold text-navy"
+        >
+          Trades on Demand home
+        </Link>
+        <Link
           href="/book"
           className="inline-flex h-12 items-center justify-center rounded-full bg-navy px-5 text-sm font-semibold text-cream"
         >

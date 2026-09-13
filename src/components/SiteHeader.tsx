@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { BrandMark } from "./BrandMark";
 import { CallButton } from "./CallButton";
+import { HomeBrandLink } from "./HomeBrandLink";
 
 const NAV = [
+  { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/book", label: "Book" },
   { href: "/contractors", label: "Contractors" },
@@ -21,9 +22,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-navy/95 text-cream backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-        <Link href="/" className="shrink-0" onClick={() => setOpen(false)}>
-          <BrandMark compact light />
-        </Link>
+        <HomeBrandLink compact light className="shrink-0" onClick={() => setOpen(false)} />
         <nav className="hidden items-center gap-6 text-sm text-cream/80 lg:flex">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className="hover:text-white">
