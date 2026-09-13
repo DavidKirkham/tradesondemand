@@ -2,26 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { ContractorPushToggle } from "@/components/contractor-app/ContractorPushToggle";
 
 type JobPreview = { id: string; publicId: string; trade: string; city: string; zip: string };
 
 export function AvailableJobsWatcher({ initialCount = 0 }: { initialCount?: number }) {
   const router = useRouter();
   const seen = useRef<Set<string> | null>(null);
-  const [count, setCount] = useState(initialCount);
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
-
-  useEffect(() => {
-    setCount(initialCount);
-  }, [initialCount]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setPermission("unsupported");
-      return;
-    }
-    setPermission(Notification.permission);
-  }, []);
+  const [polledCount, setPolledCount] = useState<number | null>(null);
+  const count = polledCount ?? initialCount;
 
   useEffect(() => {
     let cancelled = false;
@@ -31,7 +20,7 @@ export function AvailableJobsWatcher({ initialCount = 0 }: { initialCount?: numb
       if (!response.ok || cancelled) return;
       const payload = (await response.json()) as { available?: JobPreview[] };
       const available = payload.available ?? [];
-      setCount(available.length);
+      setPolledCount(available.length);
       const ids = new Set(available.map((job) => job.id));
       if (!seen.current) {
         seen.current = ids;
@@ -62,12 +51,6 @@ export function AvailableJobsWatcher({ initialCount = 0 }: { initialCount?: numb
     };
   }, [router]);
 
-  async function enable() {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    const next = await Notification.requestPermission();
-    setPermission(next);
-  }
-
   return (
     <div className="mt-1 flex flex-wrap items-center gap-2 text-[0.7rem] text-cream/80">
       {count > 0 ? (
@@ -75,15 +58,7 @@ export function AvailableJobsWatcher({ initialCount = 0 }: { initialCount?: numb
       ) : (
         <span>No new matches</span>
       )}
-      {permission === "default" ? (
-        <button type="button" onClick={() => void enable()} className="font-semibold text-gold">
-          Alert me in this browser
-        </button>
-      ) : permission === "granted" ? (
-        <span>Browser alerts on while the app is open</span>
-      ) : permission === "denied" ? (
-        <span>Browser alerts blocked</span>
-      ) : null}
+      <ContractorPushToggle />
     </div>
   );
 }

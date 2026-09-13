@@ -1,6 +1,7 @@
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
 import { ContractorPasswordForm } from "@/components/contractor-app/ContractorPasswordForm";
 import { ContractorProfileForm } from "@/components/contractor-app/ContractorProfileForm";
+import { ContractorPushToggle } from "@/components/contractor-app/ContractorPushToggle";
 import { parseContractorTradeRates, parseContractorTrades } from "@/lib/contractor-app";
 import { requireApprovedContractor } from "@/lib/contractor-auth";
 import { getTrade } from "@/lib/trades";
@@ -23,6 +24,9 @@ export default async function ContractorProfilePage() {
         {trades.map((slug) => getTrade(slug)?.name ?? slug).join(" · ")} · {contractor.licenseState} #
         {contractor.licenseNumber}
       </p>
+      <div className="mt-5">
+        <ContractorPushToggle variant="card" />
+      </div>
       <div className="mt-5">
         <ContractorProfileForm
           bio={contractor.bio}
