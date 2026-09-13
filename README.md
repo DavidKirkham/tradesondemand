@@ -55,7 +55,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...        # from `stripe listen` or Dashboard → W
 # NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
-**Vercel:** Project → Settings → Environment Variables. Same three names. Production runtime needs the secret; the Next.js build does not.
+**Vercel:** Project → Settings → Environment Variables. Same three names (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`). Production runtime needs the secret; the Next.js build does not.
 
 Local webhook forward (prints a `whsec_` to put in `.env.local`):
 
@@ -68,29 +68,32 @@ If secrets are missing the app still runs: bookings are created, deposits stay *
 ## Stack
 
 - Next.js App Router, TypeScript, Tailwind CSS v4  
-- Prisma + **PostgreSQL** (Neon on Vercel). Production build runs `prisma migrate deploy`.  
+- Prisma + **PostgreSQL** (Neon / Vercel Postgres / Supabase). `prisma generate` runs at install/build **without** a live DB. Migrations are a separate step.  
 - PWA-ready: web manifest, SVG icon, offline fallback, service worker  
 - Vitest for metro-gate, booking, contractor, and money validation  
 
 ### Database (PostgreSQL)
 
-Production default is PostgreSQL. `prisma/schema.prisma` uses:
+Production is PostgreSQL. `prisma/schema.prisma` uses `provider = "postgresql"` and `url = env("DATABASE_URL")`.
 
-- `provider = "postgresql"`
-- `url = env("DATABASE_URL")` (Neon pooled / `POSTGRES_PRISMA_URL`)
-- `directUrl = env("DATABASE_URL_UNPOOLED")` (Neon unpooled / `POSTGRES_URL_NON_POOLING`)
+Set a Postgres-compatible URL on Vercel (Production + Preview):
 
-`npm run build` and `npm run dev` run `scripts/with-db-env.cjs` so those Neon aliases are mapped before Prisma starts. **Do not** set `DATABASE_URL` to `file:./dev.db`.
+| Source | Typical variable |
+| --- | --- |
+| Neon / Vercel Postgres | `DATABASE_URL` or `POSTGRES_PRISMA_URL` / `POSTGRES_URL` |
+| Supabase | `DATABASE_URL` (URI from Project Settings → Database) |
 
-Vercel production apply:
+`scripts/with-db-env.cjs` maps Neon aliases (`POSTGRES_PRISMA_URL`, `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, `DATABASE_URL_UNPOOLED`) onto `DATABASE_URL` before Prisma CLI runs. **Do not** set `DATABASE_URL` to `file:./dev.db` on Vercel.
+
+`npm run build` / `postinstall` only run `prisma generate` (placeholder URL if unset). They do **not** connect or migrate. After the Vercel project has a real URL, apply schema once (and after later migrations):
 
 ```bash
-prisma migrate deploy
+npm run db:migrate
 ```
 
-That is already part of `npm run build`.
+That is `prisma migrate deploy`. Run it locally against the production URL, or from any machine that can reach the database. Production **runtime** still requires `DATABASE_URL` — request handlers throw if it is missing.
 
-Optional local SQLite only (not used on Vercel): `npx prisma db push --schema prisma/schema.sqlite.prisma` with `SQLITE_DATABASE_URL="file:./dev.db"`.
+Do not use SQLite on Vercel. `prisma/schema.prisma` provider is **postgresql** only.
 
 ## How to run
 
@@ -102,7 +105,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` generates the Prisma client, runs `prisma migrate deploy` against PostgreSQL, and starts Next.js (default [http://localhost:3000](http://localhost:3000)). You need a `postgresql://` `DATABASE_URL` (Neon branch or local Postgres).
+`npm run dev` generates the Prisma client (no live DB required) and starts Next.js (default [http://localhost:3000](http://localhost:3000)). For booking/ops data you need a `postgresql://` `DATABASE_URL` (Neon branch or local Postgres), then `npm run db:migrate`.
 
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
@@ -114,9 +117,9 @@ npx prisma db seed
 
 | Command        | What it does                          |
 | -------------- | ------------------------------------- |
-| `npm run dev`        | Prisma generate + `migrate deploy` + Next dev |
-| `npm run build`      | Same migrate step, then production Next build |
-| `npm run db:migrate` | `prisma migrate deploy` (Postgres)            |
+| `npm run dev`        | Prisma generate + Next dev (no migrate) |
+| `npm run build`      | Prisma generate + `next build` (no live DB) |
+| `npm run db:migrate` | `prisma migrate deploy` (needs a real Postgres URL) |
 | `npm start`          | Serve the production build                    |
 | `npm test`           | Vitest                                        |
 | `npm run lint`       | ESLint                                        |
@@ -125,8 +128,9 @@ npx prisma db seed
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | PostgreSQL URL (Neon/Vercel pooled). Must start with `postgresql://` or `postgres://`. |
-| `DATABASE_URL_UNPOOLED` | No | Direct Postgres URL for migrations. Defaults to `DATABASE_URL` or Neon `POSTGRES_URL_NON_POOLING`. |
+| `DATABASE_URL` | Runtime (Vercel) | PostgreSQL URL (Neon / Vercel Postgres / Supabase). `postgresql://` or `postgres://`. Not required for `next build`. |
+| `POSTGRES_PRISMA_URL` / `POSTGRES_URL` | Alias | Neon/Vercel inject these; the app maps them to `DATABASE_URL`. |
+| `DATABASE_URL_UNPOOLED` | No | Optional Neon direct URL; used if `DATABASE_URL` is unset. |
 | `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` | No | Tap-to-call. Hardcoded default is **8165160735** — displays **(816) 516-0735**, links `tel:+18165160735`. Demos work with no env file. |
 | `OPS_PASSWORD` | Yes | Password for `/ops` (default in `.env.example`: `dispatch`) |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |

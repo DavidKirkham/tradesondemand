@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/with-db-env.cjs generate && node scripts/with-db-env.cjs migrate deploy && next dev",
+    "dev": "node scripts/with-db-env.cjs generate && next dev",
     "postinstall": "node scripts/with-db-env.cjs generate",
-    "build": "node scripts/with-db-env.cjs generate && node scripts/with-db-env.cjs migrate deploy && next build",
+    "build": "node scripts/with-db-env.cjs generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

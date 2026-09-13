@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Normalize Neon / Vercel Postgres env vars for Prisma.
- * Schema reads DATABASE_URL (pooled) + DATABASE_URL_UNPOOLED (direct / migrate).
- * Neon may inject POSTGRES_PRISMA_URL, POSTGRES_URL, POSTGRES_URL_NON_POOLING instead.
+ * Prisma schema is PostgreSQL only (Neon / Vercel Postgres).
+ * Always set DATABASE_URL + DATABASE_URL_UNPOOLED before prisma CLI.
  */
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
+
+const PLACEHOLDER = "postgresql://prisma:prisma@127.0.0.1:5432/prisma";
 
 function first(...values) {
   for (const value of values) {
@@ -20,13 +21,13 @@ const pooled = first(
   process.env.POSTGRES_URL,
   process.env.DATABASE_URL_UNPOOLED,
   process.env.POSTGRES_URL_NON_POOLING,
+  process.env.DIRECT_URL,
 );
 
 const direct = first(
   process.env.DATABASE_URL_UNPOOLED,
   process.env.POSTGRES_URL_NON_POOLING,
   process.env.DIRECT_URL,
-  process.env.POSTGRES_PRISMA_URL,
   pooled,
 );
 
@@ -39,22 +40,22 @@ if (args.length === 0) {
 const isGenerate = args[0] === "generate";
 const isMigrate = args[0] === "migrate";
 
-if (!pooled && isGenerate) {
-  process.env.DATABASE_URL = "postgresql://prisma:prisma@127.0.0.1:5432/prisma";
-  process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
-  console.warn("DATABASE_URL unset — generating Prisma client with a placeholder Postgres URL (no live connection).");
-} else if (!pooled && isMigrate) {
-  console.warn("Skipping prisma migrate — DATABASE_URL is not set. Runtime still requires a Postgres URL.");
-  process.exit(0);
-} else if (!pooled) {
+if (pooled && pooled.startsWith("file:")) {
   console.error(
-    "Missing DATABASE_URL. Vercel/Neon injects this (or POSTGRES_PRISMA_URL). Locally use a postgresql:// URL from .env.example.",
+    "DATABASE_URL is a SQLite file: URL. schema.prisma provider is postgresql. Set a postgresql:// Neon/Vercel/Supabase URL.",
   );
   process.exit(1);
-} else if (pooled.startsWith("file:")) {
-  console.error(
-    "DATABASE_URL is a SQLite file: URL. This app requires PostgreSQL (postgresql:// or postgres://). Update Vercel/Neon or .env.",
-  );
+}
+
+if (!pooled && isGenerate) {
+  process.env.DATABASE_URL = PLACEHOLDER;
+  process.env.DATABASE_URL_UNPOOLED = PLACEHOLDER;
+  console.warn("DATABASE_URL unset — generating Prisma client with a placeholder Postgres URL (no live connection).");
+} else if (!pooled && isMigrate) {
+  console.warn("Skipping prisma migrate — DATABASE_URL is not set. Run `npm run db:migrate` after Neon is configured.");
+  process.exit(0);
+} else if (!pooled) {
+  console.error("Missing DATABASE_URL. Neon/Vercel injects DATABASE_URL or POSTGRES_PRISMA_URL.");
   process.exit(1);
 } else {
   process.env.DATABASE_URL = pooled;
