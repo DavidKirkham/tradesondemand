@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminAssignJobToContractor } from "@/components/admin/AdminAssignJobToContractor";
+import { AdminContractorDelete } from "@/components/admin/AdminContractorDelete";
 import { AdminContractorEditor } from "@/components/admin/AdminContractorEditor";
 import { AdminContractorPassword } from "@/components/admin/AdminContractorPassword";
 import { AdminGate } from "@/components/admin/AdminGate";
@@ -8,6 +9,7 @@ import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { contractorOffersTrade, jobIsAssignable } from "@/lib/admin-assign";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { contractorStatusLabel, parseTradeRatesJson, parseTradesJson } from "@/lib/contractor";
+import { isPastContractorJob } from "@/lib/contractor-app";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
@@ -195,6 +197,19 @@ async function ContractorDetail({ id }: { id: string }) {
           </div>
         )}
       </section>
+
+      <AdminContractorDelete
+        id={contractor.id}
+        businessName={contractor.businessName}
+        activeJobs={contractor.bookings
+          .filter((booking) => !isPastContractorJob(booking.status))
+          .map((booking) => ({
+            id: booking.id,
+            publicId: booking.publicId,
+            status: booking.status,
+          }))}
+        closedJobCount={contractor.bookings.filter((booking) => isPastContractorJob(booking.status)).length}
+      />
     </div>
   );
 }

@@ -15,7 +15,7 @@ const STATUSES = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
 export default async function AdminContractorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; trade?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; trade?: string; deleted?: string }>;
 }) {
   const params = await searchParams;
   return (
@@ -24,6 +24,7 @@ export default async function AdminContractorsPage({
         q={searchNeedle(params.q)}
         status={params.status ?? "ALL"}
         trade={params.trade ?? "ALL"}
+        deleted={searchNeedle(params.deleted)}
       />
     </AdminGate>
   );
@@ -33,10 +34,12 @@ async function ContractorsList({
   q,
   status,
   trade,
+  deleted,
 }: {
   q: string;
   status: string;
   trade: string;
+  deleted: string;
 }) {
   if (!(await isOpsAuthenticated())) return null;
   const rows = await prisma.contractor.findMany({
@@ -69,8 +72,15 @@ async function ContractorsList({
       <p className="stamp text-xs text-ember">Partners</p>
       <h1 className="font-display text-3xl text-navy">Subcontractors</h1>
       <p className="mt-2 text-sm text-muted">
-        All application statuses. Only approved shops appear on the public directory.
+        All application statuses. Only approved shops appear on the public directory. Delete a shop
+        from its detail page after typing the business name.
       </p>
+      {deleted ? (
+        <p className="mt-4 rounded-2xl border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-navy">
+          {deleted} was deleted. Portal login, push subscriptions, and password-reset rows are gone.
+          Completed or cancelled jobs stay on the books as unassigned.
+        </p>
+      ) : null}
       <AdminSearch
         action="/admin/contractors"
         q={q}
@@ -124,6 +134,9 @@ async function ContractorsList({
                 <th className="px-4 py-3 font-medium">Trades</th>
                 <th className="px-4 py-3 font-medium">Rate</th>
                 <th className="px-4 py-3 font-medium">Jobs</th>
+                <th className="px-4 py-3 font-medium">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -146,6 +159,14 @@ async function ContractorsList({
                     </td>
                     <td className="px-4 py-3">{formatUsd(row.hourlyRateCents)}/hr</td>
                     <td className="px-4 py-3">{row._count.bookings}</td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/contractors/${row.id}#delete`}
+                        className="text-sm font-semibold text-danger hover:underline"
+                      >
+                        Delete
+                      </Link>
+                    </td>
                   </tr>
                 );
               })}

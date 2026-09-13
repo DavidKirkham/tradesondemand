@@ -161,7 +161,7 @@ Password-protected owner UI (same cookie as the old `/ops` board; `/ops` redirec
 
 - `/admin` — counts + recent clients + pending subcontractors  
 - `/admin/clients` / `/admin/clients/[id]` — search, edit contact, edit job-site addresses, booking history, TOD payments  
-- `/admin/contractors` / `/admin/contractors/[id]` — all statuses, filter by trade, edit profile/rates, approve/reject, assigned jobs  
+- `/admin/contractors` / `/admin/contractors/[id]` — all statuses, filter by trade, edit profile/rates, approve/reject, **delete**, assigned jobs  
 - `/admin/jobs` — booking overview; assign an approved subcontractor from the list  
 - `/admin/jobs/[id]` — job detail: assign / reassign, status events  
 - `/admin/contractors/[id]` — edit shop; **push an unassigned or reassignable job** to that shop  
@@ -179,6 +179,15 @@ Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variabl
 7. That shop signs in at `/contractor` (email / phone / shop ID **and password**) and sees the ticket under **Assigned**.
 
 Pending / rejected shops never appear in the picker. Cancelled jobs cannot be assigned.
+
+### Delete a subcontractor
+
+1. Sign in at `/admin` and open **Subcontractors** (`/admin/contractors`) or a shop (`/admin/contractors/<id>`).
+2. On the list, **Delete** jumps to the typed-confirm panel on that shop. On the detail page, **Delete subcontractor** is at the bottom of the profile actions.
+3. Type the **exact business name** (case-insensitive) and confirm. `DELETE /api/admin/contractors/<id>` requires the same admin cookie as the rest of `/admin`.
+4. After delete, you land back on the subcontractors list with a success banner.
+
+**Booking rule:** open jobs (`RECEIVED`, `DISPATCHED`, `EN_ROUTE`, `ON_SITE`) **block** delete so active or unpaid work is not silently unassigned. Reassign, complete, or cancel those jobs first. Completed and cancelled jobs stay on the books with `contractorId` set to `null`. Payments stay on the booking. `ContractorPasswordReset` and `ContractorPushSubscription` rows cascade. The shop’s `loginToken` / `sessionToken` / password hash go away with the contractor row. There is no Invoice model in v1.
 
 ### Customer portal (`/account`)
 
@@ -307,7 +316,7 @@ npx prisma db seed
 | `/api/account/*` | Customer portal session (`tod_customer_session`, distinct from contractor/admin) |
 | `/api/contractor/*` | Approved-contractor session (separate cookie from admin/customers) |
 | `/api/contractor/push` | Get VAPID public key + save/delete this shop’s Web Push subscription |
-| `/api/admin/*` | Authenticated admin login + client/contractor/job edits |
+| `/api/admin/*` | Authenticated admin login + client/contractor/job edits + contractor delete |
 | `/api/ops/*` | Same cookie auth; older ops endpoints still work |
 
 ## Out of scope (v1)
