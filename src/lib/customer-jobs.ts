@@ -63,3 +63,38 @@ export function pickPayablePayment<T extends CustomerPaymentLike>(
   }
   return payable[0] ?? null;
 }
+
+/** Customer portal job page where Stripe Checkout is already wired. */
+export function customerJobPayPath(jobPublicId: string): string {
+  const id = jobPublicId.trim();
+  return id ? `/account/jobs/${encodeURIComponent(id)}` : "/account";
+}
+
+export function customerJobPayUrl(origin: string, jobPublicId: string): string {
+  return `${origin.replace(/\/$/, "")}${customerJobPayPath(jobPublicId)}`;
+}
+
+export type OutstandingCustomerJobPay<T extends CustomerPaymentLike = CustomerPaymentLike> = {
+  jobPublicId: string;
+  payPath: string;
+  pendingCents: number;
+  payments: T[];
+};
+
+export function outstandingCustomerJobPays<
+  TJob extends { publicId: string; payments: TPayment[] },
+  TPayment extends CustomerPaymentLike,
+>(jobs: TJob[]): OutstandingCustomerJobPay<TPayment>[] {
+  const rows: OutstandingCustomerJobPay<TPayment>[] = [];
+  for (const job of jobs) {
+    const payments = payableCustomerPayments(job.payments);
+    if (payments.length === 0) continue;
+    rows.push({
+      jobPublicId: job.publicId,
+      payPath: customerJobPayPath(job.publicId),
+      pendingCents: payments.reduce((sum, payment) => sum + payment.amountCents, 0),
+      payments,
+    });
+  }
+  return rows;
+}

@@ -4,6 +4,7 @@ import { AdminAddressEditor } from "@/components/admin/AdminAddressEditor";
 import { AdminAssignContractor } from "@/components/admin/AdminAssignContractor";
 import { AdminClientDelete } from "@/components/admin/AdminClientDelete";
 import { AdminClientEditor } from "@/components/admin/AdminClientEditor";
+import { AdminCopyPayLink } from "@/components/admin/AdminCopyPayLink";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { AdminPaymentStatus } from "@/components/admin/AdminPaymentStatus";
@@ -11,6 +12,7 @@ import { statusLabel } from "@/lib/booking";
 import { isPastContractorJob } from "@/lib/contractor-app";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
+import { customerPaymentLine, outstandingCustomerJobPays } from "@/lib/customer-jobs";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatUsd } from "@/lib/money";
 import { paymentTypeLabel } from "@/lib/payments";
@@ -61,6 +63,8 @@ async function ClientDetail({ id }: { id: string }) {
     publicId: row.publicId,
     trades: parseTradesJson(row.tradesJson),
   }));
+  const outstanding = outstandingCustomerJobPays(customer.bookings);
+  const outstandingCents = outstanding.reduce((sum, job) => sum + job.pendingCents, 0);
 
   return (
     <div className="space-y-6">
@@ -159,6 +163,48 @@ async function ClientDetail({ id }: { id: string }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section id="pay">
+        <h2 className="font-display text-2xl text-navy">Pay links</h2>
+        <p className="mt-1 text-sm text-muted">
+          Share the customer portal job page. They sign in as themselves and pay TOD through Stripe
+          Checkout — the webhook remains the source of truth.
+        </p>
+        {outstanding.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">Nothing is owed to TOD right now.</p>
+        ) : (
+          <div className="mt-3 space-y-3">
+            <p className="text-sm font-semibold text-navy">
+              Outstanding with TOD: {formatUsd(outstandingCents)}
+            </p>
+            <ul className="space-y-3">
+            {outstanding.map((job) => (
+              <li
+                key={job.jobPublicId}
+                className="rounded-xl border border-ember/30 bg-ember/5 px-4 py-3 text-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-xs text-muted">{job.jobPublicId}</p>
+                    <ul className="mt-1 space-y-1 text-navy">
+                      {job.payments.map((payment) => (
+                        <li key={payment.id}>
+                          {formatUsd(payment.amountCents)} · {customerPaymentLine(payment)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <p className="font-semibold text-navy">{formatUsd(job.pendingCents)}</p>
+                </div>
+                <div className="mt-3">
+                  <AdminCopyPayLink path={job.payPath} />
+                </div>
+              </li>
+            ))}
+            </ul>
           </div>
         )}
       </section>

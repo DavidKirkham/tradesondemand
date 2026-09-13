@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountJobCard } from "@/components/account/AccountJobCard";
+import { AccountOutstandingPays } from "@/components/account/AccountOutstandingPays";
 import { AccountShell } from "@/components/account/AccountShell";
 import { requireCustomer } from "@/lib/customer-auth";
-import { customerPaymentTotals, partitionCustomerJobs } from "@/lib/customer-jobs";
-import { formatUsd } from "@/lib/money";
+import { outstandingCustomerJobPays, partitionCustomerJobs } from "@/lib/customer-jobs";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default async function AccountPage() {
     include: { contractor: true, payments: true },
   });
   const { current, past } = partitionCustomerJobs(bookings);
-  const totals = customerPaymentTotals(bookings.flatMap((booking) => booking.payments));
+  const outstanding = outstandingCustomerJobPays(bookings);
 
   return (
     <AccountShell name={customer.name} needsPassword={!customer.passwordHash}>
@@ -30,14 +30,9 @@ export default async function AccountPage() {
         Only you and the KC ops desk can see this. You pay Trades on Demand, not the contractor.
       </p>
 
-      {totals.pendingCents > 0 ? (
-        <div className="mt-4 rounded-2xl border border-ember/30 bg-ember/5 px-4 py-3 text-sm text-navy">
-          <p className="font-semibold">Outstanding with TOD: {formatUsd(totals.pendingCents)}</p>
-          <p className="mt-1 text-muted">
-            Open a job to pay a pending deposit, invoice, or balance through Stripe Checkout.
-          </p>
-        </div>
-      ) : null}
+      <div className="mt-4">
+        <AccountOutstandingPays jobs={outstanding} />
+      </div>
 
       <section className="mt-8">
         <h2 className="font-display text-2xl text-navy">Current jobs</h2>
