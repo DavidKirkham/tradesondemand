@@ -3,6 +3,18 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  const customer = await prisma.customer.upsert({
+    where: { email: "riley@example.com" },
+    update: {},
+    create: {
+      email: "riley@example.com",
+      name: "Riley Chen",
+      phone: "8165550144",
+      token: "demo-customer-token-kc",
+      preferredContact: "PHONE",
+    },
+  });
+
   const existingBookings = await prisma.booking.count();
   if (existingBookings === 0) {
     await prisma.booking.create({
@@ -16,18 +28,24 @@ async function main() {
         city: "Kansas City",
         state: "MO",
         zip: "64114",
-        customerName: "Riley Chen",
-        customerPhone: "8165550144",
-        customerEmail: "riley@example.com",
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        customerEmail: customer.email,
+        customerId: customer.id,
         quoteSummary: "Emergency hvac dispatch · $89–$149 dispatch hold",
         events: {
           create: { status: "RECEIVED", note: "Seeded demo ticket" },
         },
       },
     });
+  } else {
+    await prisma.booking.updateMany({
+      where: { publicId: "TOD-DEMO01", customerId: null },
+      data: { customerId: customer.id },
+    });
   }
 
-  await prisma.contractor.upsert({
+  const contractor = await prisma.contractor.upsert({
     where: { slug: "waldo-heat-demo" },
     update: {},
     create: {
@@ -55,6 +73,11 @@ async function main() {
       ]),
       status: "APPROVED",
     },
+  });
+
+  await prisma.booking.updateMany({
+    where: { publicId: "TOD-DEMO01", contractorId: null },
+    data: { contractorId: contractor.id, matchPreference: "SPECIFIC" },
   });
 }
 
