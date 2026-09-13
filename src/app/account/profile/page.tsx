@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { AccountEditor } from "@/components/account/AccountEditor";
+import { AccountOutstandingPays } from "@/components/account/AccountOutstandingPays";
 import { AccountPasswordForm } from "@/components/account/AccountPasswordForm";
 import { AccountShell } from "@/components/account/AccountShell";
 import { requireCustomer } from "@/lib/customer-auth";
+import { outstandingCustomerJobPays } from "@/lib/customer-jobs";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -17,7 +19,17 @@ export default async function AccountProfilePage() {
   const bookings = await prisma.booking.findMany({
     where: { customerId: customer.id },
     orderBy: { createdAt: "desc" },
-    select: { id: true, street: true, city: true, state: true, zip: true },
+    select: {
+      id: true,
+      publicId: true,
+      street: true,
+      city: true,
+      state: true,
+      zip: true,
+      payments: {
+        select: { id: true, amountCents: true, status: true, type: true },
+      },
+    },
   });
   const addresses = Array.from(
     new Map(
@@ -27,10 +39,13 @@ export default async function AccountProfilePage() {
       ]),
     ).values(),
   );
+  const outstanding = outstandingCustomerJobPays(bookings);
 
   return (
     <AccountShell name={customer.name} needsPassword={!customer.passwordHash}>
-      <h2 className="font-display text-2xl text-navy">Contact</h2>
+      <AccountOutstandingPays jobs={outstanding} />
+
+      <h2 className="mt-10 font-display text-2xl text-navy">Contact</h2>
       <div className="mt-4">
         <AccountEditor
           name={customer.name}

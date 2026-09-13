@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { customerLoginHref, isSafeAccountNextPath } from "./customer-paths";
 import {
+  customerJobPayPath,
+  customerJobPayUrl,
   customerPaymentLine,
   customerPaymentTotals,
   isPastCustomerJob,
+  outstandingCustomerJobPays,
   partitionCustomerJobs,
   payableCustomerPayments,
   pickPayablePayment,
@@ -61,5 +65,47 @@ describe("customer payment totals", () => {
     expect(pickPayablePayment(payments, "c")).toBeNull();
     expect(customerPaymentLine(payments[0])).toMatch(/TOD deposit/);
     expect(customerPaymentLine(payments[0])).toMatch(/Pending/);
+  });
+});
+
+describe("customer job pay links", () => {
+  it("builds the existing account Checkout job path", () => {
+    expect(customerJobPayPath("TOD-DEMO01")).toBe("/account/jobs/TOD-DEMO01");
+    expect(customerJobPayPath("")).toBe("/account");
+    expect(customerJobPayUrl("https://todkc.com/", "TOD-DONE01")).toBe(
+      "https://todkc.com/account/jobs/TOD-DONE01",
+    );
+    expect(isSafeAccountNextPath(customerJobPayPath("TOD-DEMO01"))).toBe(true);
+    expect(customerLoginHref(customerJobPayPath("TOD-DEMO01"))).toBe(
+      "/account/login?next=%2Faccount%2Fjobs%2FTOD-DEMO01",
+    );
+  });
+
+  it("lists only jobs with unpaid TOD deposits or balances", () => {
+    const rows = outstandingCustomerJobPays([
+      {
+        publicId: "TOD-DEMO01",
+        payments: [
+          { id: "dep", amountCents: 17500, status: "PENDING", type: "DEPOSIT" },
+          { id: "zero", amountCents: 0, status: "PENDING", type: "DEPOSIT" },
+        ],
+      },
+      {
+        publicId: "TOD-PAID01",
+        payments: [{ id: "paid", amountCents: 18900, status: "PAID", type: "DEPOSIT" }],
+      },
+      {
+        publicId: "TOD-DONE01",
+        payments: [{ id: "bal", amountCents: 5000, status: "PENDING", type: "BALANCE" }],
+      },
+    ]);
+    expect(rows.map((row) => row.jobPublicId)).toEqual(["TOD-DEMO01", "TOD-DONE01"]);
+    expect(rows[0]).toMatchObject({
+      payPath: "/account/jobs/TOD-DEMO01",
+      pendingCents: 17500,
+    });
+    expect(rows[0].payments.map((payment) => payment.id)).toEqual(["dep"]);
+    expect(rows[1].pendingCents).toBe(5000);
+    expect(outstandingCustomerJobPays([])).toEqual([]);
   });
 });
