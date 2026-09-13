@@ -32,16 +32,29 @@ Customers pay **Trades on Demand** for deposits, trip minimums, and later job ba
 ## Stack
 
 - Next.js App Router, TypeScript, Tailwind CSS v4  
-- Prisma + SQLite for demo persistence (`prisma/dev.db`)  
+- Prisma + **PostgreSQL** (Neon on Vercel). Production build runs `prisma migrate deploy`.  
 - PWA-ready: web manifest, SVG icon, offline fallback, service worker  
 - Vitest for metro-gate, booking, contractor, and money validation  
 
-### Swapping SQLite for Postgres later
+### Database (PostgreSQL)
 
-1. Change `provider` in `prisma/schema.prisma` to `postgresql`.  
-2. Set `DATABASE_URL` to a Postgres URL (see `.env.example`).  
-3. Run `npx prisma migrate dev` instead of `db push`.  
-4. No application code should need to change beyond the Prisma datasource.
+Production default is PostgreSQL. `prisma/schema.prisma` uses:
+
+- `provider = "postgresql"`
+- `url = env("DATABASE_URL")` (Neon pooled / `POSTGRES_PRISMA_URL`)
+- `directUrl = env("DATABASE_URL_UNPOOLED")` (Neon unpooled / `POSTGRES_URL_NON_POOLING`)
+
+`npm run build` and `npm run dev` run `scripts/with-db-env.cjs` so those Neon aliases are mapped before Prisma starts. **Do not** set `DATABASE_URL` to `file:./dev.db`.
+
+Vercel production apply:
+
+```bash
+prisma migrate deploy
+```
+
+That is already part of `npm run build`.
+
+Optional local SQLite only (not used on Vercel): `npx prisma db push --schema prisma/schema.sqlite.prisma` with `SQLITE_DATABASE_URL="file:./dev.db"`.
 
 ## How to run
 
@@ -53,7 +66,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` generates the Prisma client, pushes the SQLite schema, and starts Next.js (default [http://localhost:3000](http://localhost:3000)).
+`npm run dev` generates the Prisma client, runs `prisma migrate deploy` against PostgreSQL, and starts Next.js (default [http://localhost:3000](http://localhost:3000)). You need a `postgresql://` `DATABASE_URL` (Neon branch or local Postgres).
 
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
@@ -65,17 +78,19 @@ npx prisma db seed
 
 | Command        | What it does                          |
 | -------------- | ------------------------------------- |
-| `npm run dev`  | Prisma generate + db push + Next dev  |
-| `npm run build`| Production build (also generates DB)  |
-| `npm start`    | Serve the production build            |
-| `npm test`     | Vitest                                |
-| `npm run lint` | ESLint                                |
+| `npm run dev`        | Prisma generate + `migrate deploy` + Next dev |
+| `npm run build`      | Same migrate step, then production Next build |
+| `npm run db:migrate` | `prisma migrate deploy` (Postgres)            |
+| `npm start`          | Serve the production build                    |
+| `npm test`           | Vitest                                        |
+| `npm run lint`       | ESLint                                        |
 
 ## Environment variables
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | SQLite file URL, e.g. `file:./dev.db` (relative to `/prisma`) |
+| `DATABASE_URL` | Yes | PostgreSQL URL (Neon/Vercel pooled). Must start with `postgresql://` or `postgres://`. |
+| `DATABASE_URL_UNPOOLED` | No | Direct Postgres URL for migrations. Defaults to `DATABASE_URL` or Neon `POSTGRES_URL_NON_POOLING`. |
 | `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` | No | Tap-to-call. Hardcoded default is **8165160735** — displays **(816) 516-0735**, links `tel:+18165160735`. Demos work with no env file. |
 | `OPS_PASSWORD` | Yes | Password for `/ops` (default in `.env.example`: `dispatch`) |
 
