@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
+import { parseResponseJson } from "@/lib/http";
 import { KC_METRO_CITIES } from "@/lib/kc-metro";
 import { TRADES } from "@/lib/trades";
 import { CallButton } from "../CallButton";
@@ -88,9 +89,13 @@ export function ContractorSignupForm() {
           })),
         }),
       });
-      const payload = (await response.json()) as { error?: string; publicId?: string };
+      const payload = await parseResponseJson<{ error?: string; publicId?: string }>(response);
       if (!response.ok || !payload.publicId) {
-        setError(payload.error || "We could not save that application. Call dispatch.");
+        if (response.status >= 500) {
+          setError(payload.error || "Server error. Try again or call the KC desk.");
+        } else {
+          setError(payload.error || "We could not save that application. Call dispatch.");
+        }
         return;
       }
       setResult({ publicId: payload.publicId });

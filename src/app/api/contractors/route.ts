@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prismaFailureResponse } from "@/lib/api-errors";
 import {
   createContractorLoginToken,
   createContractorPublicId,
@@ -12,17 +13,24 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const trade = new URL(request.url).searchParams.get("trade") ?? "";
-  const rows = await prisma.contractor.findMany({
-    where: { status: "APPROVED" },
-    orderBy: { businessName: "asc" },
-  });
+  try {
+    const trade = new URL(request.url).searchParams.get("trade") ?? "";
+    const rows = await prisma.contractor.findMany({
+      where: { status: "APPROVED" },
+      orderBy: { businessName: "asc" },
+    });
 
-  const contractors = rows
-    .map(toPublicContractor)
-    .filter((row) => !trade || row.trades.includes(trade));
+    const contractors = rows
+      .map(toPublicContractor)
+      .filter((row) => !trade || row.trades.includes(trade));
 
-  return NextResponse.json({ contractors });
+    return NextResponse.json({ contractors });
+  } catch (error) {
+    return prismaFailureResponse(
+      error,
+      "Could not load contractors. Try again or call the KC desk.",
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -64,35 +72,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.message, field: parsed.field }, { status: 400 });
   }
 
-  const contractor = await prisma.contractor.create({
-    data: {
-      publicId: createContractorPublicId(),
-      slug: createContractorSlug(parsed.data.businessName),
-      businessName: parsed.data.businessName,
-      contactName: parsed.data.contactName,
-      phone: parsed.data.phone,
-      email: parsed.data.email,
-      tradesJson: JSON.stringify(parsed.data.trades),
-      licenseNumber: parsed.data.licenseNumber,
-      licenseType: parsed.data.licenseType,
-      licenseState: parsed.data.licenseState,
-      serviceArea: parsed.data.serviceArea,
-      insured: parsed.data.insured,
-      insuranceDetails: parsed.data.insuranceDetails,
-      yearsExperience: parsed.data.yearsExperience,
-      bio: parsed.data.bio,
-      hourlyRateCents: parsed.data.hourlyRateCents,
-      minimumChargeCents: parsed.data.minimumChargeCents,
-      emergencyRateCents: parsed.data.emergencyRateCents,
-      tradeRatesJson: JSON.stringify(parsed.data.tradeRates),
-      loginToken: createContractorLoginToken(),
-      status: "PENDING",
-    },
-  });
+  try {
+    const contractor = await prisma.contractor.create({
+      data: {
+        publicId: createContractorPublicId(),
+        slug: createContractorSlug(parsed.data.businessName),
+        businessName: parsed.data.businessName,
+        contactName: parsed.data.contactName,
+        phone: parsed.data.phone,
+        email: parsed.data.email,
+        tradesJson: JSON.stringify(parsed.data.trades),
+        licenseNumber: parsed.data.licenseNumber,
+        licenseType: parsed.data.licenseType,
+        licenseState: parsed.data.licenseState,
+        serviceArea: parsed.data.serviceArea,
+        insured: parsed.data.insured,
+        insuranceDetails: parsed.data.insuranceDetails,
+        yearsExperience: parsed.data.yearsExperience,
+        bio: parsed.data.bio,
+        hourlyRateCents: parsed.data.hourlyRateCents,
+        minimumChargeCents: parsed.data.minimumChargeCents,
+        emergencyRateCents: parsed.data.emergencyRateCents,
+        tradeRatesJson: JSON.stringify(parsed.data.tradeRates),
+        loginToken: createContractorLoginToken(),
+        status: "PENDING",
+      },
+    });
 
-  return NextResponse.json({
-    publicId: contractor.publicId,
-    slug: contractor.slug,
-    status: contractor.status,
-  });
+    return NextResponse.json({
+      publicId: contractor.publicId,
+      slug: contractor.slug,
+      status: contractor.status,
+    });
+  } catch (error) {
+    return prismaFailureResponse(
+      error,
+      "Could not save that application. Try again or call the KC desk.",
+    );
+  }
 }

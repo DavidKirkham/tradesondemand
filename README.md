@@ -85,15 +85,58 @@ Set a Postgres-compatible URL on Vercel (Production + Preview):
 
 `scripts/with-db-env.cjs` maps Neon aliases (`POSTGRES_PRISMA_URL`, `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, `DATABASE_URL_UNPOOLED`) onto `DATABASE_URL` before Prisma CLI runs. **Do not** set `DATABASE_URL` to `file:./dev.db` on Vercel.
 
-`npm run build` / `postinstall` only run `prisma generate` (placeholder URL if unset). They do **not** connect or migrate. After the Vercel project has a real URL, apply schema once (and after later migrations):
+`npm run build` / `postinstall` only run `prisma generate` (placeholder URL if unset). They do **not** connect or migrate. Production **runtime** still requires `DATABASE_URL` — request handlers throw if it is missing.
+
+Do not use SQLite on Vercel. `prisma/schema.prisma` provider is **postgresql** only.
+
+### Production migrate (Neon) — required for contractor signup
+
+`POST /api/contractors` writes `Contractor.loginToken`. If Neon is behind the Prisma schema (empty DB, or missing that column), Prisma throws and signup used to return an empty HTTP 500. Apply migrations to production. **`next build` never does this.**
+
+Prisma expects these folders, in order:
+
+| Migration | What it creates |
+| --- | --- |
+| `prisma/migrations/20260913120000_init` | `Booking`, `StatusEvent`, `Contractor`, `Customer`, `Payment` (Contractor **without** `loginToken`) |
+| `prisma/migrations/20260913140000_stripe_checkout_ids` | `Payment.stripeCheckoutSessionId`, `Payment.stripePaymentIntentId` |
+| `prisma/migrations/20260913160000_contractor_login_token` | `Contractor.loginToken` `TEXT NOT NULL UNIQUE` (backfill, then unique index) |
+
+Exact production command (`prisma migrate deploy` via the env wrapper):
 
 ```bash
+# From the repo root, on a machine that can reach Neon.
+# Prefer the Vercel Production values (Project → Settings → Environment Variables),
+# or: npx vercel env pull .env.production --yes --environment=production
+# then: set -a && source .env.production && set +a
+
+export DATABASE_URL="postgresql://USER:PASSWORD@HOST/neondb?sslmode=require"
+# Prisma migrate uses the direct/unpooled URL when present:
+export DATABASE_URL_UNPOOLED="postgresql://USER:PASSWORD@HOST/neondb?sslmode=require"
+
+# Neon / Vercel Postgres aliases also work — scripts/with-db-env.cjs maps them:
+#   POSTGRES_PRISMA_URL / POSTGRES_URL          → DATABASE_URL
+#   POSTGRES_URL_NON_POOLING / DIRECT_URL       → DATABASE_URL_UNPOOLED
+
 npm run db:migrate
 ```
 
-That is `prisma migrate deploy`. Run it locally against the production URL, or from any machine that can reach the database. Production **runtime** still requires `DATABASE_URL` — request handlers throw if it is missing.
+That is the only supported apply path. Do not use `prisma migrate dev` on production.
 
-Do not use SQLite on Vercel. `prisma/schema.prisma` provider is **postgresql** only.
+If you cannot run Node against Neon, paste the SQL from those three `migration.sql` files **in order** in the Neon SQL Editor. If tables already exist and only signup is 500, the third file is usually enough:
+
+```sql
+ALTER TABLE "Contractor" ADD COLUMN "loginToken" TEXT;
+
+UPDATE "Contractor"
+SET "loginToken" = 'pro_' || substr(md5(random()::text || "id"), 1, 28)
+WHERE "loginToken" IS NULL;
+
+ALTER TABLE "Contractor" ALTER COLUMN "loginToken" SET NOT NULL;
+
+CREATE UNIQUE INDEX "Contractor_loginToken_key" ON "Contractor"("loginToken");
+```
+
+Hand-applying SQL without `migrate deploy` will not record rows in `_prisma_migrations`. Prefer `npm run db:migrate` so later deploys stay in sync.
 
 ## How to run
 
