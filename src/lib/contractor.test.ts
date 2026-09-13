@@ -50,6 +50,26 @@ describe("contractor application", () => {
     expect(validateContractorInput({ ...base, hourlyRate: "0" }).ok).toBe(false);
     expect(validateContractorInput({ ...base, minimumCharge: "-20" }).ok).toBe(false);
     expect(validateContractorInput({ ...base, hourlyRate: "free" }).ok).toBe(false);
+    expect(
+      validateContractorInput({
+        ...base,
+        tradeRates: [
+          { slug: "plumbing", hourly: "0", minimum: "149" },
+          { slug: "hvac", hourly: "110", minimum: "189" },
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("stores per-trade hourly and trip-minimum overrides in cents", () => {
+    const result = validateContractorInput(base);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.tradeRates).toEqual([
+        { slug: "plumbing", hourlyCents: 9500, minimumCents: 14900 },
+        { slug: "hvac", hourlyCents: 11000, minimumCents: 18900 },
+      ]);
+    }
   });
 });
 

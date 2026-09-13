@@ -294,10 +294,25 @@ export function OpsBoard({
                   <p className="mt-2 text-sm text-muted">
                     {row.licenseType} · {row.licenseState} #{row.licenseNumber} · {row.serviceArea}
                   </p>
-                  <p className="mt-2 text-sm text-navy">
-                    {formatUsd(row.hourlyRateCents)}/hr · {formatUsd(row.minimumChargeCents)} min
-                    {row.emergencyRateCents ? ` · after-hours ${formatUsd(row.emergencyRateCents)}` : ""}
-                  </p>
+                  <div className="mt-3 rounded-xl bg-cream/70 px-3 py-3 text-sm text-navy">
+                    <p>
+                      Primary {formatUsd(row.hourlyRateCents)}/hr · service-call min{" "}
+                      {formatUsd(row.minimumChargeCents)}
+                      {row.emergencyRateCents
+                        ? ` · after-hours ${formatUsd(row.emergencyRateCents)}`
+                        : ""}
+                    </p>
+                    {row.tradeRates.length > 0 ? (
+                      <ul className="mt-2 space-y-1 text-muted">
+                        {row.tradeRates.map((rate) => (
+                          <li key={rate.slug}>
+                            {getTrade(rate.slug)?.name ?? rate.slug}: {formatUsd(rate.hourlyCents)}
+                            /hr · {formatUsd(rate.minimumCents)} trip min
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
                   {row.insuranceDetails ? (
                     <p className="mt-1 text-xs text-muted">Insurance: {row.insuranceDetails}</p>
                   ) : null}

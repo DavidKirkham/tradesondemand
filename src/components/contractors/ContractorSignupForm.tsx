@@ -209,17 +209,41 @@ export function ContractorSignupForm() {
       <section className="space-y-4">
         <h2 className="font-display text-xl text-navy">Rates &amp; minimums (USD)</h2>
         <p className="text-sm text-muted">
-          Customers see these on your public profile after approval. Use a primary rate, then override per trade if needed.
+          Enter a primary hourly rate and a trip / service-call minimum. If you cover more than one
+          trade, you can override those numbers per trade. After-hours is optional. Customers pay
+          Trades on Demand — these are the amounts TOD quotes from.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="Primary hourly rate" value={form.hourlyRate} onChange={(v) => set("hourlyRate", v)} placeholder="95" inputMode="decimal" />
-          <Field label="Minimum / trip fee" value={form.minimumCharge} onChange={(v) => set("minimumCharge", v)} placeholder="149" inputMode="decimal" />
-          <Field label="Emergency / after-hours (optional)" value={form.emergencyRate} onChange={(v) => set("emergencyRate", v)} placeholder="175" inputMode="decimal" />
+          <Field
+            label="Primary hourly rate"
+            value={form.hourlyRate}
+            onChange={(v) => set("hourlyRate", v)}
+            placeholder="95"
+            inputMode="decimal"
+            prefix="$"
+          />
+          <Field
+            label="Service-call minimum / trip fee"
+            value={form.minimumCharge}
+            onChange={(v) => set("minimumCharge", v)}
+            placeholder="149"
+            inputMode="decimal"
+            prefix="$"
+          />
+          <Field
+            label="Emergency / after-hours (optional)"
+            value={form.emergencyRate}
+            onChange={(v) => set("emergencyRate", v)}
+            placeholder="175"
+            inputMode="decimal"
+            prefix="$"
+          />
         </div>
-        {selectedTrades.length > 0 ? (
+        {selectedTrades.length > 1 ? (
           <div className="space-y-3">
+            <p className="text-sm font-medium text-navy">Per-trade rates (optional overrides)</p>
             {selectedTrades.map((trade) => (
-              <div key={trade.slug} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-[1fr_1fr_1fr]">
+              <div key={trade.slug} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                 <p className="self-center text-sm font-medium text-navy">{trade.name}</p>
                 <Field
                   label="Hourly"
@@ -232,9 +256,10 @@ export function ContractorSignupForm() {
                   }
                   placeholder={form.hourlyRate || "95"}
                   inputMode="decimal"
+                  prefix="$"
                 />
                 <Field
-                  label="Minimum"
+                  label="Service-call min"
                   value={tradeRates[trade.slug]?.minimum ?? ""}
                   onChange={(value) =>
                     setTradeRates((current) => ({
@@ -244,6 +269,7 @@ export function ContractorSignupForm() {
                   }
                   placeholder={form.minimumCharge || "149"}
                   inputMode="decimal"
+                  prefix="$"
                 />
               </div>
             ))}
@@ -314,23 +340,34 @@ function Field({
   onChange,
   placeholder,
   inputMode,
+  prefix,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   inputMode?: "text" | "numeric" | "tel" | "email" | "decimal";
+  prefix?: string;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-medium text-navy">{label}</span>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        inputMode={inputMode}
-        className="mt-2 h-12 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none ring-ember/30 focus:ring-2"
-      />
+      <span className="relative mt-2 block">
+        {prefix ? (
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">
+            {prefix}
+          </span>
+        ) : null}
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          inputMode={inputMode}
+          className={`h-12 w-full rounded-xl border border-line bg-white text-sm outline-none ring-ember/30 focus:ring-2 ${
+            prefix ? "pl-7 pr-3" : "px-3"
+          }`}
+        />
+      </span>
     </label>
   );
 }
