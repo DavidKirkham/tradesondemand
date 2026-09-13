@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminAssignContractor } from "@/components/admin/AdminAssignContractor";
 import { AdminGate } from "@/components/admin/AdminGate";
+import { AdminJobAssignCard } from "@/components/admin/AdminJobAssignCard";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { AdminSearch } from "@/components/admin/AdminSearch";
 import { searchNeedle } from "@/lib/admin";
@@ -65,7 +66,8 @@ async function JobsList({ q, status }: { q: string; status: string }) {
       <p className="stamp text-xs text-ember">Dispatch</p>
       <h1 className="font-display text-3xl text-navy">Jobs</h1>
       <p className="mt-2 text-sm text-muted">
-        Overview of bookings. Open a job to assign a licensed subcontractor, or pick one in the list.
+        Assign each job to an approved subcontractor with the picker on the card. Reassignment asks
+        for confirmation. The shop then sees the ticket under /contractor.
       </p>
       <AdminSearch
         action="/admin/jobs"
@@ -95,7 +97,27 @@ async function JobsList({ q, status }: { q: string; status: string }) {
           No jobs match.
         </p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-paper">
+        <>
+      <div className="mt-6 space-y-3">
+        {jobs.map((job) => (
+          <AdminJobAssignCard
+            key={job.id}
+            id={job.id}
+            publicId={job.publicId}
+            trade={job.trade}
+            city={job.city}
+            state={job.state}
+            zip={job.zip}
+            status={job.status}
+            urgency={job.urgency}
+            customerName={job.customer?.name ?? job.customerName}
+            contractorId={job.contractorId}
+            contractorName={job.contractor?.businessName ?? null}
+            contractors={contractors}
+          />
+        ))}
+      </div>
+      <div className="mt-8 overflow-x-auto rounded-2xl border border-line bg-paper">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-line bg-cream-2/60 text-xs uppercase tracking-wide text-muted">
               <tr>
@@ -160,7 +182,8 @@ async function JobsList({ q, status }: { q: string; status: string }) {
               ))}
             </tbody>
           </table>
-        </div>
+      </div>
+        </>
       )}
     </div>
   );

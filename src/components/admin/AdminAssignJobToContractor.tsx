@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { jobLabel, type AdminAssignableJob } from "@/lib/admin-assign";
+import { parseResponseJson } from "@/lib/http";
 
 export function AdminAssignJobToContractor({
   contractorId,
@@ -33,12 +34,12 @@ export function AdminAssignJobToContractor({
     }
     setSaving(true);
     setMessage("");
-    const response = await fetch(`/api/admin/bookings/${selected.id}/assign`, {
+    const response = await fetch("/api/admin/assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contractorId }),
+      body: JSON.stringify({ bookingId: selected.id, contractorId }),
     });
-    const payload = (await response.json()) as { error?: string };
+    const payload = await parseResponseJson<{ error?: string }>(response);
     setSaving(false);
     if (!response.ok) {
       setMessage(payload.error || "Could not assign that job.");

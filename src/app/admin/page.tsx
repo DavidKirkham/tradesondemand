@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminGate } from "@/components/admin/AdminGate";
-import { contractorStatusLabel } from "@/lib/contractor";
+import { AdminJobAssignCard } from "@/components/admin/AdminJobAssignCard";
+import { contractorStatusLabel, parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -16,7 +17,8 @@ export default async function AdminHomePage() {
 
 async function AdminOverview() {
   if (!(await isOpsAuthenticated())) return null;
-  const [clientCount, contractorGroups, jobCount, pendingContractors, recentClients] = await Promise.all([
+  const [clientCount, contractorGroups, jobCount, pendingContractors, recentClients, unassigned, approved] =
+    await Promise.all([
     prisma.customer.count(),
     prisma.contractor.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.booking.count(),
@@ -30,7 +32,23 @@ async function AdminOverview() {
       take: 6,
       include: { _count: { select: { bookings: true } } },
     }),
+    prisma.booking.findMany({
+      where: { contractorId: null, status: { notIn: ["CANCELLED", "COMPLETED"] } },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { customer: true, contractor: true },
+    }),
+    prisma.contractor.findMany({
+      where: { status: "APPROVED" },
+      orderBy: { businessName: "asc" },
+    }),
   ]);
+  const contractors = approved.map((row) => ({
+    id: row.id,
+    businessName: row.businessName,
+    publicId: row.publicId,
+    trades: parseTradesJson(row.tradesJson),
+  }));
 
   const byStatus = Object.fromEntries(contractorGroups.map((row) => [row.status, row._count._all]));
 
@@ -39,8 +57,11 @@ async function AdminOverview() {
       <p className="stamp text-xs text-ember">Owner backend</p>
       <h1 className="font-display text-3xl text-navy">Clients &amp; subcontractors</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Private records only. Clients never appear in the public contractor directory. Approve
-        subcontractors here before they show on /contractors.
+        Private records only. Assign a job to an approved subcontractor here or under{" "}
+        <Link href="/admin/jobs" className="font-semibold text-ember">
+          Jobs
+        </Link>
+        . Approve shops before they show on /contractors.
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -52,6 +73,38 @@ async function AdminOverview() {
         />
         <Stat href="/admin/jobs" label="Jobs" value={jobCount} />
       </div>
+
+      <section className="mt-8 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-2xl text-navy">Assign a job to a subcontractor</h2>
+          <Link href="/admin/jobs" className="text-sm font-semibold text-ember">
+            All jobs
+          </Link>
+        </div>
+        {unassigned.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-muted">
+            No unassigned open jobs. Open any job under Jobs to reassign it to another approved shop.
+          </p>
+        ) : (
+          unassigned.map((job) => (
+            <AdminJobAssignCard
+              key={job.id}
+              id={job.id}
+              publicId={job.publicId}
+              trade={job.trade}
+              city={job.city}
+              state={job.state}
+              zip={job.zip}
+              status={job.status}
+              urgency={job.urgency}
+              customerName={job.customer?.name ?? job.customerName}
+              contractorId={job.contractorId}
+              contractorName={job.contractor?.businessName ?? null}
+              contractors={contractors}
+            />
+          ))
+        )}
+      </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-line bg-paper p-5">

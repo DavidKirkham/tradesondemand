@@ -4,28 +4,25 @@ import { isOpsAuthenticated } from "@/lib/ops-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: Request) {
   if (!(await isOpsAuthenticated())) {
     return NextResponse.json({ error: "Sign in to admin." }, { status: 401 });
   }
 
-  const { id } = await params;
-  let body: { contractorId?: string };
+  let body: { bookingId?: string; contractorId?: string };
   try {
-    body = (await request.json()) as { contractorId?: string };
+    body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "JSON body required." }, { status: 400 });
   }
 
+  const bookingId = String(body.bookingId ?? "").trim();
   const contractorId = String(body.contractorId ?? "").trim();
-  if (!contractorId) {
-    return NextResponse.json({ error: "Pick an approved subcontractor." }, { status: 400 });
+  if (!bookingId || !contractorId) {
+    return NextResponse.json({ error: "Pick a job and an approved subcontractor." }, { status: 400 });
   }
 
-  const result = await assignBookingToApprovedContractor(id, contractorId);
+  const result = await assignBookingToApprovedContractor(bookingId, contractorId);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
