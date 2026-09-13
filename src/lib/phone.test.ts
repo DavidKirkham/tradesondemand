@@ -6,6 +6,7 @@ import {
   isValidEmail,
   isValidUsPhone,
   telHref,
+  isReservedUsFictionPhone,
   toE164Us,
 } from "./phone";
 
@@ -52,5 +53,7 @@ describe("phone helpers", () => {
     expect(isValidEmail("a@b.co")).toBe(true);
     expect(isValidEmail("nope")).toBe(false);
     expect(toE164Us("8165550199")).toBe("+18165550199");
+    expect(isReservedUsFictionPhone("8165550199")).toBe(true);
+    expect(isReservedUsFictionPhone("8165160735")).toBe(false);
   });
 });

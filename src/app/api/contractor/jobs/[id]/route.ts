@@ -101,7 +101,7 @@ async function applyContractorJobPatch(
   }
 
   let sms:
-    | { status: string; body: string | null; error: string | null }
+    | { status: string; body: string | null; error: string | null; persistSkipped?: boolean }
     | undefined;
 
   if (eta) {
@@ -115,6 +115,16 @@ async function applyContractorJobPatch(
       eta,
     });
     const result = await sendCustomerSms(current.customerPhone, text);
+    const eventNote =
+      result.status === "SENT"
+        ? `Texted the client: ${eta}`
+        : result.status === "SKIPPED"
+          ? `ETA saved; SMS skipped: ${result.error ?? "not sent"}`
+          : `ETA saved; SMS failed: ${result.error ?? "unknown"}`;
+    await prisma.statusEvent.create({
+      data: { bookingId: id, status: current.status, note: eventNote },
+    });
+    let persistSkipped = false;
     try {
       await prisma.booking.update({
         where: { id },
@@ -122,24 +132,19 @@ async function applyContractorJobPatch(
           customerSmsStatus: result.status,
           customerSmsBody: text,
           customerSmsError: result.error ?? null,
-          events: {
-            create: {
-              status: current.status,
-              note:
-                result.status === "SENT"
-                  ? `Texted the client: ${eta}`
-                  : result.status === "SKIPPED"
-                    ? `ETA saved; SMS skipped (Twilio not configured): ${eta}`
-                    : `ETA saved; SMS failed: ${result.error ?? "unknown"}`,
-            },
-          },
         },
         omit: BOOKING_SMS_OMIT,
       });
     } catch (error) {
       if (!isMissingBookingSmsColumn(error)) throw error;
+      persistSkipped = true;
     }
-    sms = { status: result.status, body: text, error: result.error ?? null };
+    sms = {
+      status: result.status,
+      body: text,
+      error: result.error ?? null,
+      persistSkipped,
+    };
   }
 
   const updated = await prisma.booking.findUnique({ where: { id }, omit: BOOKING_SMS_OMIT });

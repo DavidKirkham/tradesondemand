@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { buildAcceptEtaSms, isTwilioConfigured } from "./sms";
+import { buildAcceptEtaSms, describeContractorEtaSms, isTwilioConfigured, sendCustomerSms } from "./sms";
 
 const keys = ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"] as const;
 const snapshot = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
@@ -22,6 +22,43 @@ describe("isTwilioConfigured", () => {
         TWILIO_FROM_NUMBER: "+18165550100",
       }),
     ).toBe(true);
+  });
+});
+
+describe("sendCustomerSms", () => {
+  it("skips reserved 555 test numbers even when Twilio is configured", async () => {
+    process.env.TWILIO_ACCOUNT_SID = "ACxxx";
+    process.env.TWILIO_AUTH_TOKEN = "secret";
+    process.env.TWILIO_FROM_NUMBER = "+18165160735";
+    const result = await sendCustomerSms("8165550199", "test body");
+    expect(result.status).toBe("SKIPPED");
+    expect(result.error).toMatch(/555 test number/i);
+  });
+});
+
+describe("describeContractorEtaSms", () => {
+  it("shows a skipped reason instead of calling the KC desk", () => {
+    expect(
+      describeContractorEtaSms({
+        status: "SKIPPED",
+        error: "Customer number is a reserved 555 test number. Twilio will not deliver it.",
+        persistSkipped: true,
+      }),
+    ).toMatch(/SMS skipped: Customer number is a reserved 555/);
+    expect(
+      describeContractorEtaSms({
+        status: "SKIPPED",
+        error: "Customer number is a reserved 555 test number. Twilio will not deliver it.",
+        persistSkipped: true,
+      }),
+    ).toMatch(/missing SMS columns/);
+    expect(
+      describeContractorEtaSms({
+        status: "FAILED",
+        error: "Twilio: The number +18165550199 is unverified.",
+      }),
+    ).toMatch(/SMS did not send: Twilio:/);
+    expect(describeContractorEtaSms({ status: "FAILED", error: "Twilio HTTP 400" })).not.toMatch(/KC desk/);
   });
 });
 

@@ -38,6 +38,12 @@ export function isValidUsPhone(value: string): boolean {
   return nationalUsDigits(value).length === 10;
 }
 
+/** NANP 555 exchange is reserved for fiction / tests — carriers will not deliver. */
+export function isReservedUsFictionPhone(value: string): boolean {
+  const national = nationalUsDigits(value);
+  return national.length === 10 && national.slice(3, 6) === "555";
+}
+
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

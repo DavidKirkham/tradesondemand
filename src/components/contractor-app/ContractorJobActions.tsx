@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CONTRACTOR_JOB_STATUSES, contractorStatusActionLabel } from "@/lib/contractor-app";
 import { parseResponseJson } from "@/lib/http";
+import { describeContractorEtaSms } from "@/lib/sms";
 
 export function ContractorJobActions({
   id,
@@ -35,7 +36,10 @@ export function ContractorJobActions({
         eta: body.eta?.trim() || undefined,
       }),
     });
-    const payload = await parseResponseJson<{ error?: string; sms?: { status?: string } }>(response);
+    const payload = await parseResponseJson<{
+      error?: string;
+      sms?: { status?: string; error?: string | null; persistSkipped?: boolean };
+    }>(response);
     setSaving(false);
     if (!response.ok) {
       setMessage(payload.error || "Could not update job.");
@@ -44,12 +48,13 @@ export function ContractorJobActions({
     if (body.claim) setAccepted(true);
     setNote("");
     if (body.eta) {
-      const sms = payload.sms?.status;
-      if (sms === "SENT") setMessage("Client texted with your arrival note.");
-      else if (sms === "SKIPPED") {
-        setMessage("Arrival note saved. SMS skipped — Twilio is not configured on the server.");
-      } else if (sms === "FAILED") setMessage("Arrival note saved, but the text failed. Call the KC desk.");
-      else setMessage("Arrival note saved.");
+      setMessage(
+        describeContractorEtaSms({
+          status: payload.sms?.status ?? "",
+          error: payload.sms?.error,
+          persistSkipped: payload.sms?.persistSkipped,
+        }),
+      );
       setEta("");
     } else {
       setMessage(body.claim ? "Job is yours. Tell the client when you can get there." : "Updated.");
@@ -111,7 +116,7 @@ export function ContractorJobActions({
           </button>
           {smsStatus ? (
             <p className="text-xs text-muted">
-              Last SMS: {smsStatus === "SENT" ? "sent" : smsStatus === "SKIPPED" ? "skipped (no Twilio)" : smsStatus.toLowerCase()}
+              Last SMS: {smsStatus === "SENT" ? "sent" : smsStatus === "SKIPPED" ? "skipped" : smsStatus.toLowerCase()}
             </p>
           ) : null}
         </div>
