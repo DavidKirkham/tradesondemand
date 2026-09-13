@@ -6,6 +6,7 @@ import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { AdminSearch } from "@/components/admin/AdminSearch";
 import { searchNeedle } from "@/lib/admin";
 import { BOOKING_STATUSES, statusLabel } from "@/lib/booking";
+import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
@@ -48,6 +49,7 @@ async function JobsList({ q, status }: { q: string; status: string }) {
       },
       orderBy: { createdAt: "desc" },
       include: { contractor: true, customer: true },
+      omit: BOOKING_SMS_OMIT,
     }),
     prisma.contractor.findMany({
       where: { status: "APPROVED" },

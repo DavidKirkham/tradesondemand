@@ -7,6 +7,7 @@ import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { AdminPaymentStatus } from "@/components/admin/AdminPaymentStatus";
 import { statusLabel } from "@/lib/booking";
+import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatUsd } from "@/lib/money";
@@ -38,8 +39,12 @@ async function ClientDetail({ id }: { id: string }) {
       bookings: {
         orderBy: { createdAt: "desc" },
         include: { contractor: true, payments: true },
+        omit: BOOKING_SMS_OMIT,
       },
-      payments: { orderBy: { createdAt: "desc" }, include: { booking: true } },
+      payments: {
+        orderBy: { createdAt: "desc" },
+        include: { booking: { omit: BOOKING_SMS_OMIT } },
+      },
     },
   });
   if (!customer) notFound();

@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { AdminAssignContractor } from "@/components/admin/AdminAssignContractor";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
-import { parseTradesJson } from "@/lib/contractor";
 import { statusLabel } from "@/lib/booking";
+import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
+import { parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
@@ -35,8 +36,23 @@ async function JobDetail({ id }: { id: string }) {
       customer: true,
       events: { orderBy: { createdAt: "desc" }, take: 12 },
     },
+    omit: BOOKING_SMS_OMIT,
   });
   if (!job) notFound();
+
+  let customerSms: {
+    customerSmsStatus: string | null;
+    customerSmsBody: string | null;
+    customerSmsError: string | null;
+  } | null = null;
+  try {
+    customerSms = await prisma.booking.findUnique({
+      where: { id: job.id },
+      select: { customerSmsStatus: true, customerSmsBody: true, customerSmsError: true },
+    });
+  } catch (error) {
+    if (!isMissingBookingSmsColumn(error)) throw error;
+  }
 
   const approved = await prisma.contractor.findMany({
     where: { status: "APPROVED" },
@@ -118,19 +134,19 @@ async function JobDetail({ id }: { id: string }) {
           <h2 className="font-display text-xl text-navy">Status</h2>
           <AdminJobStatus id={job.id} status={job.status} />
         </div>
-        {job.customerSmsStatus || job.customerSmsBody ? (
+        {customerSms?.customerSmsStatus || customerSms?.customerSmsBody ? (
           <div className="mt-4 rounded-xl border border-line/70 px-3 py-2 text-sm">
             <p className="font-semibold text-navy">
-              Client SMS: {job.customerSmsStatus === "SENT"
+              Client SMS: {customerSms.customerSmsStatus === "SENT"
                 ? "sent"
-                : job.customerSmsStatus === "SKIPPED"
+                : customerSms.customerSmsStatus === "SKIPPED"
                   ? "skipped (Twilio not configured)"
-                  : job.customerSmsStatus === "FAILED"
+                  : customerSms.customerSmsStatus === "FAILED"
                     ? "failed"
-                    : job.customerSmsStatus || "none"}
+                    : customerSms.customerSmsStatus || "none"}
             </p>
-            {job.customerSmsBody ? <p className="mt-1 text-muted">{job.customerSmsBody}</p> : null}
-            {job.customerSmsError ? <p className="mt-1 text-xs text-danger">{job.customerSmsError}</p> : null}
+            {customerSms.customerSmsBody ? <p className="mt-1 text-muted">{customerSms.customerSmsBody}</p> : null}
+            {customerSms.customerSmsError ? <p className="mt-1 text-xs text-danger">{customerSms.customerSmsError}</p> : null}
           </div>
         ) : null}
         {job.events.length === 0 ? (

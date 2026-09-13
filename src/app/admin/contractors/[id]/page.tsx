@@ -5,6 +5,7 @@ import { AdminContractorEditor } from "@/components/admin/AdminContractorEditor"
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { contractorOffersTrade, jobIsAssignable } from "@/lib/admin-assign";
+import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { contractorStatusLabel, parseTradeRatesJson, parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
@@ -34,6 +35,7 @@ async function ContractorDetail({ id }: { id: string }) {
       bookings: {
         orderBy: { createdAt: "desc" },
         include: { customer: true },
+        omit: BOOKING_SMS_OMIT,
       },
     },
   });
@@ -48,6 +50,7 @@ async function ContractorDetail({ id }: { id: string }) {
             orderBy: { createdAt: "desc" },
             include: { contractor: true },
             take: 80,
+            omit: BOOKING_SMS_OMIT,
           })
         )
           .filter(

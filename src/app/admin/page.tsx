@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobAssignCard } from "@/components/admin/AdminJobAssignCard";
+import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { contractorStatusLabel, parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
@@ -19,30 +20,31 @@ async function AdminOverview() {
   if (!(await isOpsAuthenticated())) return null;
   const [clientCount, contractorGroups, jobCount, pendingContractors, recentClients, unassigned, approved] =
     await Promise.all([
-    prisma.customer.count(),
-    prisma.contractor.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.booking.count(),
-    prisma.contractor.findMany({
-      where: { status: "PENDING" },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-    }),
-    prisma.customer.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      include: { _count: { select: { bookings: true } } },
-    }),
-    prisma.booking.findMany({
-      where: { contractorId: null, status: { notIn: ["CANCELLED", "COMPLETED"] } },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      include: { customer: true, contractor: true },
-    }),
-    prisma.contractor.findMany({
-      where: { status: "APPROVED" },
-      orderBy: { businessName: "asc" },
-    }),
-  ]);
+      prisma.customer.count(),
+      prisma.contractor.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.booking.count(),
+      prisma.contractor.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+      }),
+      prisma.customer.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        include: { _count: { select: { bookings: true } } },
+      }),
+      prisma.booking.findMany({
+        where: { contractorId: null, status: { notIn: ["CANCELLED", "COMPLETED"] } },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        include: { customer: true, contractor: true },
+        omit: BOOKING_SMS_OMIT,
+      }),
+      prisma.contractor.findMany({
+        where: { status: "APPROVED" },
+        orderBy: { businessName: "asc" },
+      }),
+    ]);
   const contractors = approved.map((row) => ({
     id: row.id,
     businessName: row.businessName,
