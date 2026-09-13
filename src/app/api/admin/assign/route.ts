@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { assignBookingToApprovedContractor } from "@/lib/admin-assign-action";
+import { prismaFailureResponse } from "@/lib/api-errors";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +23,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pick a job and an approved subcontractor." }, { status: 400 });
   }
 
-  const result = await assignBookingToApprovedContractor(bookingId, contractorId);
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  try {
+    const result = await assignBookingToApprovedContractor(bookingId, contractorId);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    return NextResponse.json({ booking: result.booking });
+  } catch (error) {
+    return prismaFailureResponse(error, "Could not assign that job.");
   }
-  return NextResponse.json({ booking: result.booking });
 }

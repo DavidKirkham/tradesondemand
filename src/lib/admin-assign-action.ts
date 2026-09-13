@@ -4,12 +4,14 @@ import {
   jobIsAssignable,
   nextStatusOnAdminAssign,
 } from "./admin-assign";
+import { BOOKING_SMS_OMIT } from "./booking-sms-columns";
 import { prisma } from "./prisma";
 
 export async function assignBookingToApprovedContractor(bookingId: string, contractorId: string) {
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
+  const booking = await prisma.booking.findFirst({
+    where: { OR: [{ id: bookingId }, { publicId: bookingId }] },
     include: { contractor: true },
+    omit: BOOKING_SMS_OMIT,
   });
   if (!booking) {
     return { ok: false as const, status: 404, error: "Job not found." };
@@ -45,6 +47,7 @@ export async function assignBookingToApprovedContractor(bookingId: string, contr
       events: { create: { status: nextStatus, note } },
     },
     include: { contractor: true },
+    omit: BOOKING_SMS_OMIT,
   });
 
   return {
