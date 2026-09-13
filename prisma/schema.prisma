@@ -8,24 +8,27 @@ datasource db {
 }
 
 model Booking {
-  id            String        @id @default(cuid())
-  publicId      String        @unique
-  token         String        @unique
-  trade         String
-  problem       String
-  urgency       String
-  street        String
-  city          String
-  state         String
-  zip           String
-  customerName  String
-  customerPhone String
-  customerEmail String
-  status        String        @default("RECEIVED")
-  quoteSummary  String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  events        StatusEvent[]
+  id               String        @id @default(cuid())
+  publicId         String        @unique
+  token            String        @unique
+  trade            String
+  problem          String
+  urgency          String
+  street           String
+  city             String
+  state            String
+  zip              String
+  customerName     String
+  customerPhone    String
+  customerEmail    String
+  status           String        @default("RECEIVED")
+  quoteSummary     String
+  contractorId     String?
+  contractor       Contractor?   @relation(fields: [contractorId], references: [id])
+  matchPreference  String        @default("FIRST_AVAILABLE")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  events           StatusEvent[]
 }
 
 model StatusEvent {
@@ -37,4 +40,32 @@ model StatusEvent {
   createdAt DateTime @default(now())
 
   @@index([bookingId])
+}
+
+model Contractor {
+  id                 String    @id @default(cuid())
+  publicId           String    @unique
+  slug               String    @unique
+  businessName       String
+  contactName        String
+  phone              String
+  email              String
+  tradesJson         String
+  licenseNumber      String
+  licenseType        String
+  licenseState       String
+  serviceArea        String
+  insured            Boolean
+  insuranceDetails   String?
+  yearsExperience    Int?
+  bio                String?
+  hourlyRateCents    Int
+  minimumChargeCents Int
+  emergencyRateCents Int?
+  tradeRatesJson     String
+  status             String    @default("PENDING")
+  reviewNote         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  bookings           Booking[]
 }

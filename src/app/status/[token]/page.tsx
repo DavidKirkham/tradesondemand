@@ -20,12 +20,17 @@ export default async function StatusDetailPage({
   const { token } = await params;
   const booking = await prisma.booking.findFirst({
     where: { OR: [{ token }, { publicId: token }] },
-    include: { events: { orderBy: { createdAt: "asc" } } },
+    include: { events: { orderBy: { createdAt: "asc" } }, contractor: true },
   });
 
   if (!booking) notFound();
 
   const trade = getTrade(booking.trade);
+  const contractorLabel = booking.contractor
+    ? booking.contractor.businessName
+    : booking.matchPreference === "SPECIFIC"
+      ? "Requested partner"
+      : "First available match";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
@@ -36,6 +41,18 @@ export default async function StatusDetailPage({
       <div className="mt-8 rounded-2xl border border-line bg-paper p-6">
         <dl className="space-y-3 text-sm">
           <Row label="Trade" value={trade?.name ?? booking.trade} />
+          <div>
+            <dt className="stamp text-[0.65rem] text-muted">Contractor</dt>
+            <dd className="mt-1 text-navy">
+              {booking.contractor ? (
+                <Link href={`/contractors/${booking.contractor.slug}`} className="font-medium text-ember">
+                  {booking.contractor.businessName}
+                </Link>
+              ) : (
+                contractorLabel
+              )}
+            </dd>
+          </div>
           <Row label="Urgency" value={booking.urgency} />
           <Row
             label="Job site"

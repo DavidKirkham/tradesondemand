@@ -30,6 +30,12 @@ export function SiteFooter() {
               <Link href="/book">Book online</Link>
             </li>
             <li>
+              <Link href="/contractors">Find a contractor</Link>
+            </li>
+            <li>
+              <Link href="/contractors/signup">Join as a licensed contractor</Link>
+            </li>
+            <li>
               <Link href="/status">Job status</Link>
             </li>
             <li>

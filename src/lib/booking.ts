@@ -26,6 +26,8 @@ export type BookingInput = {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  contractorId?: string;
+  matchPreference?: string;
 };
 
 export type BookingValidation =
@@ -44,6 +46,8 @@ export type ValidatedBooking = {
   customerPhone: string;
   customerEmail: string;
   quoteSummary: string;
+  contractorId: string | null;
+  matchPreference: "FIRST_AVAILABLE" | "SPECIFIC";
 };
 
 export function createPublicId(): string {
@@ -105,6 +109,8 @@ export function validateBookingInput(input: BookingInput): BookingValidation {
 
   const urgency = input.urgency;
   const quote = getQuotePreview(input.trade, urgency);
+  const contractorId = input.contractorId?.trim() || null;
+  const matchPreference = contractorId ? "SPECIFIC" : "FIRST_AVAILABLE";
 
   return {
     ok: true,
@@ -120,6 +126,8 @@ export function validateBookingInput(input: BookingInput): BookingValidation {
       customerPhone: input.customerPhone.replace(/\D/g, "").slice(-10),
       customerEmail: input.customerEmail.trim().toLowerCase(),
       quoteSummary: quoteSummaryLine(quote),
+      contractorId: matchPreference === "SPECIFIC" ? contractorId : null,
+      matchPreference,
     },
   };
 }

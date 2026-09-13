@@ -32,8 +32,16 @@ const FAQS = [
     a: "After booking you get a public job ID (TOD-XXXXXX) and a private status link. Either works on the Track a job page.",
   },
   {
+    q: "Can I choose the contractor?",
+    a: "Yes, when an approved licensed partner offers that trade. You can open their public profile (rates, license, service area) or pick first available and let dispatch match you. Pending applicants are not shown.",
+  },
+  {
+    q: "How do licensed contractors join?",
+    a: "Apply at /contractors/signup (or /join). We need your license (MO or KS), insurance confirmation, KC metro coverage, and rates. Ops approves or rejects. There is still no contractor mobile app — signup and review only.",
+  },
+  {
     q: "Do you have a contractor app?",
-    a: "Not yet. Partners are coordinated from the lightweight ops board. Homeowners book on the website / PWA.",
+    a: "Not yet. Partners apply on the website and are coordinated from the ops board. Homeowners book on the website / PWA.",
   },
   {
     q: "Why was my ZIP rejected?",

@@ -6,8 +6,9 @@ import { evaluateServiceArea } from "@/lib/kc-metro";
 import { getQuotePreview, type Urgency } from "@/lib/quotes";
 import { TRADES } from "@/lib/trades";
 import { CallButton } from "../CallButton";
+import { ContractorPicker } from "./ContractorPicker";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 type FormState = {
   trade: string;
@@ -17,6 +18,7 @@ type FormState = {
   state: "MO" | "KS" | "";
   zip: string;
   urgency: Urgency | "";
+  contractorId: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -30,6 +32,7 @@ const INITIAL: FormState = {
   state: "",
   zip: "",
   urgency: "",
+  contractorId: "",
   customerName: "",
   customerPhone: "",
   customerEmail: "",
@@ -39,22 +42,26 @@ const STEPS: { n: Step; label: string }[] = [
   { n: 1, label: "Trade" },
   { n: 2, label: "Address" },
   { n: 3, label: "Urgency" },
-  { n: 4, label: "Quote" },
-  { n: 5, label: "Confirm" },
+  { n: 4, label: "Pro" },
+  { n: 5, label: "Quote" },
+  { n: 6, label: "Confirm" },
 ];
 
 export function BookingWizard({
   initialTrade = "",
   initialUrgency = "",
+  initialContractorId = "",
 }: {
   initialTrade?: string;
   initialUrgency?: Urgency | "";
+  initialContractorId?: string;
 }) {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>({
     ...INITIAL,
     trade: initialTrade,
     urgency: initialUrgency,
+    contractorId: initialContractorId,
   });
   const [error, setError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -91,7 +98,7 @@ export function BookingWizard({
       return setError("Choose emergency or routine so we know how fast to move.");
     }
     setError("");
-    setStep((current) => Math.min(5, current + 1) as Step);
+    setStep((current) => Math.min(6, current + 1) as Step);
   }
 
   async function submit() {
@@ -161,7 +168,7 @@ export function BookingWizard({
           </div>
           <CallButton variant="ghost" label="Call instead" />
         </div>
-        <ol className="mt-5 grid grid-cols-5 gap-1">
+        <ol className="mt-5 grid grid-cols-6 gap-1">
           {STEPS.map((item) => (
             <li key={item.n} className="min-w-0">
               <div
@@ -305,7 +312,25 @@ export function BookingWizard({
           </section>
         ) : null}
 
-        {step === 4 && quote ? (
+        {step === 4 ? (
+          <section className="space-y-4">
+            <div>
+              <h2 className="font-display text-xl text-navy">Who do you want on the job?</h2>
+              <p className="mt-1 text-sm text-muted">
+                Pick a licensed KC partner you can look up, or let dispatch match the first
+                available. Pending applicants never show here.
+              </p>
+            </div>
+            <ContractorPicker
+              trade={form.trade}
+              urgency={form.urgency}
+              selectedId={form.contractorId}
+              onSelect={(id) => update("contractorId", id)}
+            />
+          </section>
+        ) : null}
+
+        {step === 5 && quote ? (
           <section className="space-y-4">
             <div>
               <h2 className="font-display text-xl text-navy">Quote &amp; deposit — straight talk</h2>
@@ -325,7 +350,7 @@ export function BookingWizard({
           </section>
         ) : null}
 
-        {step === 5 ? (
+        {step === 6 ? (
           <section className="space-y-4">
             <div>
               <h2 className="font-display text-xl text-navy">Who should dispatch call?</h2>
@@ -381,7 +406,7 @@ export function BookingWizard({
           ) : (
             <span />
           )}
-          {step < 5 ? (
+          {step < 6 ? (
             <button
               type="button"
               onClick={goNext}
@@ -448,6 +473,12 @@ function Review({ form }: { form: FormState }) {
         <dt className="text-muted">Address</dt>
         <dd className="text-right font-medium text-navy">
           {form.street}, {form.city}, {form.state} {form.zip}
+        </dd>
+      </div>
+      <div className="flex justify-between gap-4 py-1">
+        <dt className="text-muted">Contractor</dt>
+        <dd className="text-right font-medium text-navy">
+          {form.contractorId ? "Requested licensed partner" : "First available match"}
         </dd>
       </div>
     </dl>

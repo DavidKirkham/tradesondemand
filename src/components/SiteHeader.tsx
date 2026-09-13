@@ -8,6 +8,7 @@ import { CallButton } from "./CallButton";
 const NAV = [
   { href: "/services", label: "Services" },
   { href: "/book", label: "Book" },
+  { href: "/contractors", label: "Contractors" },
   { href: "/status", label: "Track a job" },
   { href: "/about", label: "About" },
   { href: "/faqs", label: "FAQs" },

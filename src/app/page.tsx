@@ -102,13 +102,13 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-4 py-16">
           <p className="stamp text-xs text-gold">How booking works</p>
           <h2 className="mt-2 font-display text-3xl md:text-4xl">Five steps. Then a human.</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-5">
+          <div className="mt-8 grid gap-4 md:grid-cols-5 lg:grid-cols-5">
             {[
               ["Trade + problem", "Pick any trade and say what failed."],
               ["KC address", "ZIP and city have to sit in the metro."],
               ["Emergency or routine", "We route the ticket, not a national call center."],
-              ["Quote clarity", "Dispatch hold vs scheduled visit — no fine print theater."],
-              ["Confirm + status", "Name, phone, email. Then a live ticket."],
+              ["Pick a licensed pro", "Choose an approved contractor or first available."],
+              ["Quote + confirm", "Rates, deposit rules, then a live ticket."],
             ].map(([title, copy], index) => (
               <div key={title} className="rounded-2xl bg-white/5 p-4">
                 <p className="font-mono text-gold">{String(index + 1).padStart(2, "0")}</p>
@@ -121,7 +121,7 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16">
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-8 md:grid-cols-3">
           <div className="rounded-2xl border border-line bg-paper p-6">
             <h2 className="font-display text-2xl text-navy">Why we stay in the metro</h2>
             <p className="mt-3 text-sm leading-7 text-muted">
@@ -129,6 +129,21 @@ export default function HomePage() {
               company that only books work a local crew can reach — Kansas City, Overland Park,
               Olathe, Independence, Lee&apos;s Summit, Shawnee, and the towns in between.
             </p>
+          </div>
+          <div className="rounded-2xl border border-line bg-paper p-6">
+            <h2 className="font-display text-2xl text-navy">Licensed contractors</h2>
+            <p className="mt-3 text-sm leading-7 text-muted">
+              If you hold a MO or KS license and cover the KC metro, apply to join the bench. Ops
+              reviews insurance and license before you appear in the directory or booking picker.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/contractors" className="text-sm font-semibold text-ember">
+                Browse approved partners
+              </Link>
+              <Link href="/contractors/signup" className="text-sm font-semibold text-navy">
+                Apply to join
+              </Link>
+            </div>
           </div>
           <div className="rounded-2xl border border-line bg-paper p-6">
             <h2 className="font-display text-2xl text-navy">Price, before anyone drives</h2>

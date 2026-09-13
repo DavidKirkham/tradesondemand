@@ -1,7 +1,9 @@
+export const DEFAULT_DISPATCH_PHONE = "8165160735";
+
 export function getDispatchPhone(): string {
-  const raw = process.env.NEXT_PUBLIC_DISPATCH_PHONE ?? "8165550136";
+  const raw = process.env.NEXT_PUBLIC_DISPATCH_PHONE ?? DEFAULT_DISPATCH_PHONE;
   const digits = raw.replace(/\D/g, "");
-  return digits || "8165550136";
+  return digits || DEFAULT_DISPATCH_PHONE;
 }
 
 export function formatPhone(digits: string): string {

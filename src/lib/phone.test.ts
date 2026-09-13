@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { formatPhone, isValidEmail, isValidUsPhone, telHref } from "./phone";
+import {
+  DEFAULT_DISPATCH_PHONE,
+  formatPhone,
+  isValidEmail,
+  isValidUsPhone,
+  telHref,
+} from "./phone";
 
 describe("phone helpers", () => {
-  it("formats a 10-digit KC number", () => {
-    expect(formatPhone("8165550136")).toBe("(816) 555-0136");
+  it("formats the KC business line", () => {
+    expect(formatPhone(DEFAULT_DISPATCH_PHONE)).toBe("(816) 516-0735");
   });
 
-  it("builds a tel link", () => {
-    expect(telHref("8165550136")).toBe("tel:+18165550136");
+  it("builds a tel link for the business line", () => {
+    expect(telHref(DEFAULT_DISPATCH_PHONE)).toBe("tel:+18165160735");
   });
 
   it("validates US phones and emails", () => {

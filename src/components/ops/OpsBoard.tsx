@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BOOKING_STATUSES, statusLabel } from "@/lib/booking";
+import { contractorStatusLabel, type PublicContractor } from "@/lib/contractor";
+import { formatUsd } from "@/lib/money";
 import { getTrade } from "@/lib/trades";
 
 export type OpsBooking = {
@@ -19,15 +22,36 @@ export type OpsBooking = {
   status: string;
   problem: string;
   createdAt: string;
+  contractorId: string | null;
+  matchPreference: string;
 };
 
-export function OpsBoard({ initialBookings }: { initialBookings: OpsBooking[] }) {
+export type OpsContractor = PublicContractor & {
+  contactName: string;
+  phone: string;
+  email: string;
+  insuranceDetails: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+};
+
+export function OpsBoard({
+  initialBookings,
+  initialContractors,
+  contractorNames,
+}: {
+  initialBookings: OpsBooking[];
+  initialContractors: OpsContractor[];
+  contractorNames: Record<string, string>;
+}) {
   const router = useRouter();
+  const [tab, setTab] = useState<"jobs" | "contractors">("jobs");
   const [filter, setFilter] = useState("ALL");
+  const [appFilter, setAppFilter] = useState("ALL");
   const [note, setNote] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
-  async function updateStatus(id: string, status: string) {
+  async function updateBooking(id: string, status: string) {
     const response = await fetch(`/api/ops/bookings/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -41,95 +65,213 @@ export function OpsBoard({ initialBookings }: { initialBookings: OpsBooking[] })
     router.refresh();
   }
 
-  const visible = initialBookings.filter((row) => filter === "ALL" || row.status === filter);
+  async function updateContractor(id: string, status: string) {
+    const response = await fetch(`/api/ops/contractors/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, note: note[id] || undefined }),
+    });
+    if (!response.ok) {
+      setError("Could not update that application.");
+      return;
+    }
+    setNote((current) => ({ ...current, [id]: "" }));
+    router.refresh();
+  }
+
+  const visibleJobs = initialBookings.filter((row) => filter === "ALL" || row.status === filter);
+  const visibleApps = initialContractors.filter((row) => appFilter === "ALL" || row.status === appFilter);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="stamp text-xs text-ember">Dispatch</p>
-          <h1 className="font-display text-3xl text-navy">KC job board</h1>
+          <h1 className="font-display text-3xl text-navy">KC ops board</h1>
         </div>
-        <label className="text-sm">
-          <span className="mr-2 text-muted">Status</span>
-          <select
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-white px-2"
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("jobs")}
+            className={`h-10 rounded-full px-4 text-sm font-semibold ${
+              tab === "jobs" ? "bg-navy text-cream" : "border border-line"
+            }`}
           >
-            <option value="ALL">All</option>
-            {BOOKING_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {statusLabel(status)}
-              </option>
-            ))}
-          </select>
-        </label>
+            Jobs ({initialBookings.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("contractors")}
+            className={`h-10 rounded-full px-4 text-sm font-semibold ${
+              tab === "contractors" ? "bg-navy text-cream" : "border border-line"
+            }`}
+          >
+            Contractors ({initialContractors.length})
+          </button>
+        </div>
       </div>
 
       {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
-      {visible.length === 0 ? (
-        <p className="mt-10 rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
-          No tickets in this filter. Complete a booking on /book to see it here.
-        </p>
-      ) : (
-        <div className="mt-8 space-y-4">
-          {visible.map((row) => {
-            const trade = getTrade(row.trade);
-            return (
-              <article
-                key={row.id}
-                className={`rounded-2xl border bg-paper p-5 ${
-                  row.urgency === "emergency" ? "border-ember/40" : "border-line"
-                }`}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-mono text-sm text-muted">{row.publicId}</p>
-                    <h2 className="font-display text-2xl text-navy">{trade?.name ?? row.trade}</h2>
-                    <p className="mt-1 text-sm text-muted">
-                      {row.street}, {row.city}, {row.state} {row.zip}
-                    </p>
-                  </div>
-                  <div className="text-right text-sm">
-                    <p className={`font-semibold ${row.urgency === "emergency" ? "text-ember" : "text-navy"}`}>
-                      {row.urgency}
-                    </p>
-                    <p className="text-muted">{statusLabel(row.status)}</p>
-                  </div>
-                </div>
-                <p className="mt-3 text-sm text-navy">{row.problem}</p>
-                <p className="mt-2 text-xs text-muted">
-                  {row.customerName} · {row.customerPhone} ·{" "}
-                  {new Date(row.createdAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
-                </p>
-                <div className="mt-4 flex flex-col gap-2 md:flex-row">
-                  <select
-                    key={`${row.id}-${row.status}`}
-                    defaultValue={row.status}
-                    onChange={(event) => updateStatus(row.id, event.target.value)}
-                    className="h-11 rounded-xl border border-line bg-white px-3 text-sm"
+      {tab === "jobs" ? (
+        <>
+          <label className="mt-6 block text-sm">
+            <span className="mr-2 text-muted">Status</span>
+            <select
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              className="h-10 rounded-lg border border-line bg-white px-2"
+            >
+              <option value="ALL">All</option>
+              {BOOKING_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {statusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {visibleJobs.length === 0 ? (
+            <p className="mt-10 rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
+              No tickets in this filter.
+            </p>
+          ) : (
+            <div className="mt-8 space-y-4">
+              {visibleJobs.map((row) => {
+                const trade = getTrade(row.trade);
+                return (
+                  <article
+                    key={row.id}
+                    className={`rounded-2xl border bg-paper p-5 ${
+                      row.urgency === "emergency" ? "border-ember/40" : "border-line"
+                    }`}
                   >
-                    {BOOKING_STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {statusLabel(status)}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    value={note[row.id] ?? ""}
-                    onChange={(event) =>
-                      setNote((current) => ({ ...current, [row.id]: event.target.value }))
-                    }
-                    placeholder="Optional note (saved on next status change)"
-                    className="h-11 flex-1 rounded-xl border border-line bg-white px-3 text-sm"
-                  />
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-sm text-muted">{row.publicId}</p>
+                        <h2 className="font-display text-2xl text-navy">{trade?.name ?? row.trade}</h2>
+                        <p className="mt-1 text-sm text-muted">
+                          {row.street}, {row.city}, {row.state} {row.zip}
+                        </p>
+                      </div>
+                      <div className="text-right text-sm">
+                        <p className={`font-semibold ${row.urgency === "emergency" ? "text-ember" : "text-navy"}`}>
+                          {row.urgency}
+                        </p>
+                        <p className="text-muted">{statusLabel(row.status)}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm text-navy">{row.problem}</p>
+                    <p className="mt-2 text-xs text-muted">
+                      {row.contractorId
+                        ? `Requested: ${contractorNames[row.contractorId] ?? "licensed partner"}`
+                        : "Match: first available"}
+                      {" · "}
+                      {row.customerName} · {row.customerPhone}
+                    </p>
+                    <div className="mt-4 flex flex-col gap-2 md:flex-row">
+                      <select
+                        key={`${row.id}-${row.status}`}
+                        defaultValue={row.status}
+                        onChange={(event) => updateBooking(row.id, event.target.value)}
+                        className="h-11 rounded-xl border border-line bg-white px-3 text-sm"
+                      >
+                        {BOOKING_STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {statusLabel(status)}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={note[row.id] ?? ""}
+                        onChange={(event) =>
+                          setNote((current) => ({ ...current, [row.id]: event.target.value }))
+                        }
+                        placeholder="Optional note (saved on next status change)"
+                        className="h-11 flex-1 rounded-xl border border-line bg-white px-3 text-sm"
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <label className="mt-6 block text-sm">
+            <span className="mr-2 text-muted">Application</span>
+            <select
+              value={appFilter}
+              onChange={(event) => setAppFilter(event.target.value)}
+              className="h-10 rounded-lg border border-line bg-white px-2"
+            >
+              <option value="ALL">All</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </label>
+          {visibleApps.length === 0 ? (
+            <p className="mt-10 rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
+              No applications in this filter. Licensed shops apply at /contractors/signup.
+            </p>
+          ) : (
+            <div className="mt-8 space-y-4">
+              {visibleApps.map((row) => (
+                <article key={row.id} className="rounded-2xl border border-line bg-paper p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-sm text-muted">{row.publicId}</p>
+                      <h2 className="font-display text-2xl text-navy">{row.businessName}</h2>
+                      <p className="mt-1 text-sm text-muted">
+                        {row.contactName} · {row.phone} · {row.email}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-navy">{contractorStatusLabel(row.status)}</p>
+                  </div>
+                  <p className="mt-3 text-sm text-navy">
+                    {row.trades.map((slug) => getTrade(slug)?.name ?? slug).join(" · ")}
+                  </p>
+                  <p className="mt-2 text-sm text-muted">
+                    {row.licenseType} · {row.licenseState} #{row.licenseNumber} · {row.serviceArea}
+                  </p>
+                  <p className="mt-2 text-sm text-navy">
+                    {formatUsd(row.hourlyRateCents)}/hr · {formatUsd(row.minimumChargeCents)} min
+                    {row.emergencyRateCents ? ` · after-hours ${formatUsd(row.emergencyRateCents)}` : ""}
+                  </p>
+                  {row.insuranceDetails ? (
+                    <p className="mt-1 text-xs text-muted">Insurance: {row.insuranceDetails}</p>
+                  ) : null}
+                  {row.status === "APPROVED" ? (
+                    <Link href={`/contractors/${row.slug}`} className="mt-2 inline-block text-sm font-semibold text-ember">
+                      Public profile
+                    </Link>
+                  ) : null}
+                  <div className="mt-4 flex flex-col gap-2 md:flex-row">
+                    <select
+                      key={`${row.id}-${row.status}`}
+                      defaultValue={row.status}
+                      onChange={(event) => updateContractor(row.id, event.target.value)}
+                      className="h-11 rounded-xl border border-line bg-white px-3 text-sm"
+                    >
+                      <option value="PENDING">Pending review</option>
+                      <option value="APPROVED">Approve (publish)</option>
+                      <option value="REJECTED">Reject</option>
+                    </select>
+                    <input
+                      value={note[row.id] ?? ""}
+                      onChange={(event) =>
+                        setNote((current) => ({ ...current, [row.id]: event.target.value }))
+                      }
+                      placeholder="Review note (saved on status change)"
+                      className="h-11 flex-1 rounded-xl border border-line bg-white px-3 text-sm"
+                    />
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

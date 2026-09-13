@@ -25,9 +25,9 @@ export default function AboutPage() {
           we will say no in the form instead of taking a deposit and hoping.
         </p>
         <p>
-          v1 is the customer booking loop plus a lightweight ops board. There is no contractor
-          mobile app yet, and payments/SMS are stubbed. The product you see is the desk a
-          homeowner or property manager would actually use at 11 p.m. when the water heater goes.
+          v1 is the customer booking loop, public profiles for approved licensed partners, and a
+          lightweight ops board. Licensed MO/KS contractors apply at /contractors/signup; they do
+          not get a job-accepting app yet. Payments and SMS are stubbed.
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -36,6 +36,12 @@ export default function AboutPage() {
           className="inline-flex h-12 items-center justify-center rounded-full bg-navy px-5 text-sm font-semibold text-cream"
         >
           Book a trade
+        </Link>
+        <Link
+          href="/contractors/signup"
+          className="inline-flex h-12 items-center justify-center text-sm font-semibold text-navy"
+        >
+          Contractor signup
         </Link>
         <CallButton variant="ghost" />
       </div>
