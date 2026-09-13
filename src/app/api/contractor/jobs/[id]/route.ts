@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { prismaFailureResponse } from "@/lib/api-errors";
 import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
-import { jobFitsContractor, isContractorJobStatus } from "@/lib/contractor-app";
+import {
+  isContractorJobStatus,
+  isPastContractorJob,
+  jobFitsContractor,
+  validateContractorCustomerMessage,
+} from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
 import { prisma } from "@/lib/prisma";
-import { buildAcceptEtaSms, sendCustomerSms } from "@/lib/sms";
+import { buildAcceptEtaSms, buildContractorCustomerSms, sendCustomerSms } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +23,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  let body: { status?: string; note?: string; claim?: boolean; eta?: string };
+  let body: { status?: string; note?: string; claim?: boolean; eta?: string; message?: string };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -35,14 +40,14 @@ export async function PATCH(
 async function applyContractorJobPatch(
   id: string,
   contractor: { id: string; businessName: string; tradesJson: string; serviceArea: string },
-  body: { status?: string; note?: string; claim?: boolean; eta?: string },
+  body: { status?: string; note?: string; claim?: boolean; eta?: string; message?: string },
 ) {
   const booking = await prisma.booking.findUnique({ where: { id }, omit: BOOKING_SMS_OMIT });
   if (!booking) return NextResponse.json({ error: "Job not found." }, { status: 404 });
 
   const assigned = booking.contractorId === contractor.id;
   const available = !booking.contractorId && jobFitsContractor(booking, contractor);
-  if (booking.contractorId && !assigned && (body.claim || body.eta)) {
+  if (booking.contractorId && !assigned && (body.claim || body.eta || body.message)) {
     return NextResponse.json(
       { error: "This job was already taken by another shop." },
       { status: 409 },
@@ -53,7 +58,9 @@ async function applyContractorJobPatch(
   }
 
   const eta = body.eta?.trim() ?? "";
-  const wantsClaim = Boolean(body.claim) || (available && (Boolean(body.status) || Boolean(eta)));
+  const outbound = body.message?.trim() ?? "";
+  const wantsClaim =
+    Boolean(body.claim) || (available && (Boolean(body.status) || Boolean(eta) || Boolean(outbound)));
 
   if (wantsClaim && !assigned) {
     const claimed = await prisma.booking.updateMany({
@@ -87,6 +94,9 @@ async function applyContractorJobPatch(
     if (!assigned && !wantsClaim) {
       return NextResponse.json({ error: "Accept the job before updating status." }, { status: 400 });
     }
+    if (isPastContractorJob(booking.status) && !wantsClaim) {
+      return NextResponse.json({ error: "This job is already closed." }, { status: 400 });
+    }
     if (!isContractorJobStatus(body.status)) {
       return NextResponse.json({ error: "Use en route, on site, or done." }, { status: 400 });
     }
@@ -104,23 +114,33 @@ async function applyContractorJobPatch(
     | { status: string; body: string | null; error: string | null; persistSkipped?: boolean }
     | undefined;
 
-  if (eta) {
+  const smsRaw = eta || outbound;
+  if (smsRaw) {
+    const parsed = validateContractorCustomerMessage(smsRaw);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.message }, { status: 400 });
     const current = await prisma.booking.findUnique({ where: { id }, omit: BOOKING_SMS_OMIT });
     if (!current || current.contractorId !== contractor.id) {
       return NextResponse.json({ error: "Accept the job before texting the client." }, { status: 400 });
     }
-    const text = buildAcceptEtaSms({
-      businessName: contractor.businessName,
-      publicId: current.publicId,
-      eta,
-    });
+    const text = eta
+      ? buildAcceptEtaSms({
+          businessName: contractor.businessName,
+          publicId: current.publicId,
+          eta: parsed.message,
+        })
+      : buildContractorCustomerSms({
+          businessName: contractor.businessName,
+          publicId: current.publicId,
+          message: parsed.message,
+        });
     const result = await sendCustomerSms(current.customerPhone, text);
+    const kind = eta ? "ETA" : "Note";
     const eventNote =
       result.status === "SENT"
-        ? `Texted the client: ${eta}`
+        ? `Texted the client: ${parsed.message}`
         : result.status === "SKIPPED"
-          ? `ETA saved; SMS skipped: ${result.error ?? "not sent"}`
-          : `ETA saved; SMS failed: ${result.error ?? "unknown"}`;
+          ? `${kind} saved; SMS skipped: ${result.error ?? "not sent"}`
+          : `${kind} saved; SMS failed: ${result.error ?? "unknown"}`;
     await prisma.statusEvent.create({
       data: { bookingId: id, status: current.status, note: eventNote },
     });

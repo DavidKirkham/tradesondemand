@@ -12,6 +12,9 @@ export function ContractorProfileForm({
   minimumChargeCents,
   emergencyRateCents,
   yearsExperience,
+  contactName,
+  phone,
+  email,
   trades,
   tradeRates,
   slug,
@@ -22,6 +25,9 @@ export function ContractorProfileForm({
   minimumChargeCents: number;
   emergencyRateCents: number | null;
   yearsExperience: number | null;
+  contactName: string;
+  phone: string;
+  email: string;
   trades: string[];
   tradeRates: { slug: string; hourlyCents: number; minimumCents: number }[];
   slug: string;
@@ -34,6 +40,9 @@ export function ContractorProfileForm({
     minimumCharge: centsToInput(minimumChargeCents),
     emergencyRate: centsToInput(emergencyRateCents),
     yearsExperience: yearsExperience != null ? String(yearsExperience) : "",
+    contactName,
+    phone,
+    email,
   });
   const [rateDrafts, setRateDrafts] = useState<Record<string, { hourly: string; minimum: string }>>(
     () => {
@@ -58,6 +67,9 @@ export function ContractorProfileForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
+        contactName: form.contactName,
+        phone: form.phone,
+        email: form.email,
         tradeRates: trades.map((slug) => ({
           slug,
           hourly: rateDrafts[slug]?.hourly || form.hourlyRate,
@@ -77,6 +89,24 @@ export function ContractorProfileForm({
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted">
+        Email and phone are also how you sign in. Change them here if the shop contact changed.
+      </p>
+      <Field
+        label="Contact name"
+        value={form.contactName}
+        onChange={(value) => setForm((current) => ({ ...current, contactName: value }))}
+      />
+      <Field
+        label="Shop phone"
+        value={form.phone}
+        onChange={(value) => setForm((current) => ({ ...current, phone: value }))}
+      />
+      <Field
+        label="Shop email"
+        value={form.email}
+        onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+      />
       <label className="block text-sm">
         <span className="font-medium text-navy">KC coverage</span>
         <textarea

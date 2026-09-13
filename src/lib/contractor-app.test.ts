@@ -3,7 +3,10 @@ import {
   contractorLoginBlockReason,
   contractorStatusActionLabel,
   isContractorJobStatus,
+  isOpenContractorJob,
+  isPastContractorJob,
   jobFitsContractor,
+  validateContractorCustomerMessage,
   validateContractorProfilePatch,
 } from "./contractor-app";
 
@@ -78,5 +81,55 @@ describe("validateContractorProfilePatch", () => {
     );
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.hourlyRateCents).toBe(12000);
+  });
+
+  it("validates business contact when sent", () => {
+    const bad = validateContractorProfilePatch(
+      {
+        serviceArea: "Overland Park and 66204",
+        hourlyRate: "120",
+        minimumCharge: "189",
+        contactName: "M",
+        phone: "8165160735",
+        email: "morgan@waldoheat.example",
+      },
+      ["hvac"],
+    );
+    expect(bad.ok).toBe(false);
+
+    const ok = validateContractorProfilePatch(
+      {
+        serviceArea: "Overland Park and 66204",
+        hourlyRate: "120",
+        minimumCharge: "189",
+        contactName: "Morgan Ellis",
+        phone: "(816) 516-0735",
+        email: "Morgan@WaldoHeat.example",
+      },
+      ["hvac"],
+    );
+    expect(ok.ok).toBe(true);
+    if (ok.ok) {
+      expect(ok.data.contact?.phone).toBe("8165160735");
+      expect(ok.data.contact?.email).toBe("morgan@waldoheat.example");
+    }
+  });
+});
+
+describe("past vs current jobs", () => {
+  it("treats completed and cancelled as past", () => {
+    expect(isPastContractorJob("COMPLETED")).toBe(true);
+    expect(isPastContractorJob("CANCELLED")).toBe(true);
+    expect(isOpenContractorJob("DISPATCHED")).toBe(true);
+    expect(isOpenContractorJob("EN_ROUTE")).toBe(true);
+    expect(isOpenContractorJob("COMPLETED")).toBe(false);
+  });
+});
+
+describe("validateContractorCustomerMessage", () => {
+  it("requires 8–240 characters", () => {
+    expect(validateContractorCustomerMessage("short").ok).toBe(false);
+    expect(validateContractorCustomerMessage("I can be there in 45 minutes.").ok).toBe(true);
+    expect(validateContractorCustomerMessage("x".repeat(241)).ok).toBe(false);
   });
 });

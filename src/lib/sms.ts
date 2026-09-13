@@ -47,6 +47,32 @@ export function buildAcceptEtaSms(input: {
   return `${input.businessName} accepted your Trades on Demand job ${input.publicId}. They said: ${eta} Call ${formatPhone(getDispatchPhone())} if you need the KC desk.`;
 }
 
+export function buildContractorCustomerSms(input: {
+  businessName: string;
+  publicId: string;
+  message: string;
+}): string {
+  const message = input.message.trim();
+  return `${input.businessName} (Trades on Demand job ${input.publicId}): ${message} Call ${formatPhone(getDispatchPhone())} if you need the KC desk.`;
+}
+
+export function describeContractorCustomerSms(sms: ContractorEtaSmsPayload): string {
+  const persist = sms.persistSkipped
+    ? " SMS status was not stored (database is missing SMS columns)."
+    : "";
+  if (sms.status === "SENT") {
+    return `Client texted.${persist}`;
+  }
+  const reason = sms.error?.trim() || "No further detail.";
+  if (sms.status === "SKIPPED") {
+    return `Note saved. SMS skipped: ${reason}${persist}`;
+  }
+  if (sms.status === "FAILED") {
+    return `Note saved. SMS did not send: ${reason}${persist}`;
+  }
+  return `Note saved.${persist}`;
+}
+
 export async function sendCustomerSms(to: string, body: string): Promise<SmsResult> {
   if (!isTwilioConfigured()) {
     return { status: "SKIPPED", error: "Twilio is not configured on this server." };

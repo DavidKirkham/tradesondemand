@@ -127,6 +127,106 @@ async function main() {
       },
     });
   }
+
+  const demo = await prisma.booking.findUnique({
+    where: { publicId: "TOD-DEMO01" },
+    include: { payments: true },
+  });
+  if (demo && demo.payments.length === 0) {
+    await prisma.payment.create({
+      data: {
+        publicId: "PAY-DEMO01",
+        bookingId: demo.id,
+        customerId: customer.id,
+        amountCents: 17500,
+        type: "DEPOSIT",
+        status: "PENDING",
+        note: "Seeded emergency hold — pending with TOD",
+      },
+    });
+  }
+
+  const doneExisting = await prisma.booking.findUnique({ where: { publicId: "TOD-DONE01" } });
+  if (!doneExisting) {
+    await prisma.booking.create({
+      data: {
+        publicId: "TOD-DONE01",
+        token: "demo-done-job-kc",
+        trade: "hvac",
+        problem: "Replaced a failed blower motor in Brookside. Job complete.",
+        urgency: "routine",
+        street: "318 W 63rd St",
+        city: "Kansas City",
+        state: "MO",
+        zip: "64113",
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        customerEmail: customer.email,
+        customerId: customer.id,
+        contractorId: contractor.id,
+        matchPreference: "SPECIFIC",
+        status: "COMPLETED",
+        quoteSummary: "TOD trip minimum $189.00",
+        events: {
+          create: [
+            { status: "RECEIVED", note: "Seeded completed ticket" },
+            { status: "COMPLETED", note: "Work finished" },
+          ],
+        },
+        payments: {
+          create: {
+            publicId: "PAY-DONE01",
+            customerId: customer.id,
+            amountCents: 18900,
+            type: "DEPOSIT",
+            status: "PAID",
+            note: "Seeded TOD trip minimum (paid)",
+          },
+        },
+      },
+    });
+  }
+
+  const cancelledExisting = await prisma.booking.findUnique({ where: { publicId: "TOD-CXL01" } });
+  if (!cancelledExisting) {
+    await prisma.booking.create({
+      data: {
+        publicId: "TOD-CXL01",
+        token: "demo-cancelled-job-kc",
+        trade: "plumbing",
+        problem: "Customer cancelled a routine drain visit before arrival.",
+        urgency: "routine",
+        street: "401 E 31st St",
+        city: "Kansas City",
+        state: "MO",
+        zip: "64108",
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        customerEmail: customer.email,
+        customerId: customer.id,
+        contractorId: contractor.id,
+        matchPreference: "SPECIFIC",
+        status: "CANCELLED",
+        quoteSummary: "Cancelled before dispatch hold captured",
+        events: {
+          create: [
+            { status: "RECEIVED", note: "Seeded cancelled ticket" },
+            { status: "CANCELLED", note: "Customer cancelled" },
+          ],
+        },
+        payments: {
+          create: {
+            publicId: "PAY-CXL01",
+            customerId: customer.id,
+            amountCents: 14900,
+            type: "DEPOSIT",
+            status: "REFUNDED",
+            note: "Seeded deposit refunded by TOD",
+          },
+        },
+      },
+    });
+  }
 }
 
 main()

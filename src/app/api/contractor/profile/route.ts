@@ -18,6 +18,9 @@ export async function PATCH(request: Request) {
     minimumCharge?: string;
     emergencyRate?: string;
     yearsExperience?: string;
+    contactName?: string;
+    phone?: string;
+    email?: string;
     tradeRates?: { slug?: string; hourly?: string; minimum?: string }[];
   };
   try {
@@ -34,6 +37,9 @@ export async function PATCH(request: Request) {
       minimumCharge: body.minimumCharge,
       emergencyRate: body.emergencyRate,
       yearsExperience: body.yearsExperience,
+      contactName: body.contactName,
+      phone: body.phone,
+      email: body.email,
       tradeRates: Array.isArray(body.tradeRates)
         ? body.tradeRates.map((row) => ({
             slug: String(row.slug ?? ""),
@@ -56,6 +62,13 @@ export async function PATCH(request: Request) {
       emergencyRateCents: parsed.data.emergencyRateCents,
       yearsExperience: parsed.data.yearsExperience,
       tradeRatesJson: JSON.stringify(parsed.data.tradeRates),
+      ...(parsed.data.contact
+        ? {
+            contactName: parsed.data.contact.contactName,
+            phone: parsed.data.contact.phone,
+            email: parsed.data.contact.email,
+          }
+        : {}),
     },
   });
 

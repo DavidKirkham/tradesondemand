@@ -190,7 +190,18 @@ Mobile-first app for **approved** licensed partners. Pending and rejected applic
 
 A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
 
-Inside the app: assigned jobs, available jobs in your trades/area, job detail, **Accept** (race-safe claim), arrival / ETA text to the client, status (en route / on site / done), and public profile edit. Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site.
+**How to test the contractor PWA**
+
+1. Seed: `npm run db:seed` (needs Postgres).  
+2. Open `/contractor` (or `/contractor/s/tod-waldo-demo`).  
+3. Sign in with the Waldo email + phone above.  
+4. **Jobs** — current assigned (`TOD-DEMO01`) + available (`TOD-OPEN01`). Accept + En route / On site / Done + ETA text.  
+5. **Past** — completed `TOD-DONE01` and cancelled `TOD-CXL01`.  
+6. **SMS** — text only on jobs you own; 555 numbers skip; missing Twilio still saves the note.  
+7. **Pay** — per-job pending/paid/refunded from `Payment` rows + history. Copy states payouts are via TOD.  
+8. **Profile** — edit contact, coverage, rates, bio → Save. Sign-in email/phone update if you change them.
+
+Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancelled), **SMS** (text customers on jobs you own), job detail (**Accept**, En route / On site / Done, arrival text), **Profile** (business contact, coverage, rates, bio), and **Pay** (per-job TOD payment status + Payment history). Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site. Payouts are via TOD; the Pay page does not invent Stripe Connect.
 
 **Matching:** an unassigned, not-complete/cancelled booking is available when the shop is **APPROVED**, their `tradesJson` includes the job trade, and `serviceArea` covers the job city or ZIP (case-insensitive substring). Writing **metro** (e.g. “Kansas City metro”) also matches any KC metro city/ZIP from `src/lib/kc-metro.ts`. A city-only list (e.g. “Olathe and 66061”) does not see Independence.
 
@@ -241,7 +252,7 @@ npx prisma db seed
 | `/contractors/signup` `/join` | Licensed contractor application |
 | `/account` `/account/[token]` | Private customer profile (cookie or magic link after first book) |
 | `/status` `/status/[token]` | Customer job status |
-| `/contractor` `/contractor/jobs/[id]` `/contractor/profile` | **Approved contractor PWA** — jobs, status, public profile |
+| `/contractor` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — current jobs, past jobs, SMS, TOD payment status, profile |
 | `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit clients and subcontractors; **assign jobs** (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
 | `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |

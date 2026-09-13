@@ -15,9 +15,10 @@ export default async function ContractorProfilePage() {
 
   return (
     <ContractorAppShell businessName={contractor.businessName}>
-      <h1 className="font-display text-2xl text-navy">Public profile</h1>
+      <h1 className="font-display text-2xl text-navy">Shop profile</h1>
       <p className="mt-1 text-sm text-muted">
-        These fields appear on /contractors. License and approval stay with dispatch.
+        Business contact, coverage, rates, and bio. License and approval stay with dispatch. Customers
+        still pay TOD — this is not a bank setup.
       </p>
       <p className="mt-2 text-sm text-navy">
         {trades.map((slug) => getTrade(slug)?.name ?? slug).join(" · ")} · {contractor.licenseState} #
@@ -31,6 +32,9 @@ export default async function ContractorProfilePage() {
           minimumChargeCents={contractor.minimumChargeCents}
           emergencyRateCents={contractor.emergencyRateCents}
           yearsExperience={contractor.yearsExperience}
+          contactName={contractor.contactName}
+          phone={contractor.phone}
+          email={contractor.email}
           trades={trades}
           tradeRates={parseContractorTradeRates(contractor.tradeRatesJson)}
           slug={contractor.slug}

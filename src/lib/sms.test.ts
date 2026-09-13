@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { buildAcceptEtaSms, describeContractorEtaSms, isTwilioConfigured, sendCustomerSms } from "./sms";
+import {
+  buildAcceptEtaSms,
+  buildContractorCustomerSms,
+  describeContractorCustomerSms,
+  describeContractorEtaSms,
+  isTwilioConfigured,
+  sendCustomerSms,
+} from "./sms";
 
 const keys = ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"] as const;
 const snapshot = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
@@ -59,6 +66,30 @@ describe("describeContractorEtaSms", () => {
       }),
     ).toMatch(/SMS did not send: Twilio:/);
     expect(describeContractorEtaSms({ status: "FAILED", error: "Twilio HTTP 400" })).not.toMatch(/KC desk/);
+  });
+});
+
+describe("buildContractorCustomerSms", () => {
+  it("includes shop, job id, and the note", () => {
+    const body = buildContractorCustomerSms({
+      businessName: "Waldo Heat & Pipe",
+      publicId: "TOD-OPEN01",
+      message: "On my way — call if the gate code changed.",
+    });
+    expect(body).toContain("Waldo Heat & Pipe");
+    expect(body).toContain("TOD-OPEN01");
+    expect(body).toContain("gate code");
+  });
+});
+
+describe("describeContractorCustomerSms", () => {
+  it("explains skipped Twilio without mentioning the KC desk", () => {
+    expect(
+      describeContractorCustomerSms({
+        status: "SKIPPED",
+        error: "Customer number is a reserved 555 test number. Twilio will not deliver it.",
+      }),
+    ).toMatch(/SMS skipped: Customer number is a reserved 555/);
   });
 });
 

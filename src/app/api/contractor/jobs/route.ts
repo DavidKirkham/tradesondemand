@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
-import { jobFitsContractor } from "@/lib/contractor-app";
+import { isOpenContractorJob, jobFitsContractor } from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -29,25 +29,24 @@ export async function GET() {
   ]);
 
   const available = open.filter((job) => jobFitsContractor(job, contractor));
+  const assigned = assignedRows.filter((job) => isOpenContractorJob(job.status));
+  const past = assignedRows.filter((job) => !isOpenContractorJob(job.status));
+
+  function preview(job: (typeof assignedRows)[number]) {
+    return {
+      id: job.id,
+      publicId: job.publicId,
+      trade: job.trade,
+      urgency: job.urgency,
+      city: job.city,
+      zip: job.zip,
+      status: job.status,
+    };
+  }
 
   return NextResponse.json({
-    assigned: assignedRows.map((job) => ({
-      id: job.id,
-      publicId: job.publicId,
-      trade: job.trade,
-      urgency: job.urgency,
-      city: job.city,
-      zip: job.zip,
-      status: job.status,
-    })),
-    available: available.map((job) => ({
-      id: job.id,
-      publicId: job.publicId,
-      trade: job.trade,
-      urgency: job.urgency,
-      city: job.city,
-      zip: job.zip,
-      status: job.status,
-    })),
+    assigned: assigned.map(preview),
+    available: available.map(preview),
+    past: past.map(preview),
   });
 }

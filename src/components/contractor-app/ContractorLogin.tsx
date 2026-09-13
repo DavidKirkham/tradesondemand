@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -60,6 +61,12 @@ export function ContractorLogin() {
           Open jobs
         </button>
       </form>
+      <p className="mt-6 text-center text-sm text-muted">
+        Not approved yet?{" "}
+        <Link href="/contractors/signup" className="font-semibold text-ember">
+          Apply as a licensed partner
+        </Link>
+      </p>
     </div>
   );
 }
