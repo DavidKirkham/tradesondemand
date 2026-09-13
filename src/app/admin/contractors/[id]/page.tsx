@@ -1,0 +1,134 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { AdminContractorEditor } from "@/components/admin/AdminContractorEditor";
+import { AdminGate } from "@/components/admin/AdminGate";
+import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
+import { contractorStatusLabel, parseTradeRatesJson, parseTradesJson } from "@/lib/contractor";
+import { isOpsAuthenticated } from "@/lib/ops-auth";
+import { formatPhone } from "@/lib/phone";
+import { prisma } from "@/lib/prisma";
+import { getTrade } from "@/lib/trades";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminContractorDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return (
+    <AdminGate>
+      <ContractorDetail id={id} />
+    </AdminGate>
+  );
+}
+
+async function ContractorDetail({ id }: { id: string }) {
+  if (!(await isOpsAuthenticated())) return null;
+  const contractor = await prisma.contractor.findUnique({
+    where: { id },
+    include: {
+      bookings: {
+        orderBy: { createdAt: "desc" },
+        include: { customer: true },
+      },
+    },
+  });
+  if (!contractor) notFound();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link href="/admin/contractors" className="text-sm font-semibold text-ember">
+          ← Subcontractors
+        </Link>
+        <h1 className="mt-2 font-display text-3xl text-navy">{contractor.businessName}</h1>
+        <p className="text-sm text-muted">
+          {contractor.publicId} · {contractorStatusLabel(contractor.status)} ·{" "}
+          {formatPhone(contractor.phone)}
+          {contractor.status === "APPROVED" ? (
+            <>
+              {" · "}
+              <Link href={`/contractors/${contractor.slug}`} className="font-semibold text-ember">
+                Public profile
+              </Link>
+            </>
+          ) : null}
+        </p>
+      </div>
+
+      <AdminContractorEditor
+        id={contractor.id}
+        businessName={contractor.businessName}
+        contactName={contractor.contactName}
+        phone={contractor.phone}
+        email={contractor.email}
+        trades={parseTradesJson(contractor.tradesJson)}
+        licenseNumber={contractor.licenseNumber}
+        licenseType={contractor.licenseType}
+        licenseState={contractor.licenseState}
+        serviceArea={contractor.serviceArea}
+        insured={contractor.insured}
+        insuranceDetails={contractor.insuranceDetails}
+        yearsExperience={contractor.yearsExperience}
+        bio={contractor.bio}
+        hourlyRateCents={contractor.hourlyRateCents}
+        minimumChargeCents={contractor.minimumChargeCents}
+        emergencyRateCents={contractor.emergencyRateCents}
+        tradeRates={parseTradeRatesJson(contractor.tradeRatesJson)}
+        status={contractor.status}
+        reviewNote={contractor.reviewNote}
+      />
+
+      <section>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-2xl text-navy">Assigned jobs</h2>
+          <Link href="/admin/jobs" className="text-sm font-semibold text-ember">
+            All jobs
+          </Link>
+        </div>
+        {contractor.bookings.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No jobs assigned to this shop yet.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto rounded-2xl border border-line bg-paper">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-line bg-cream-2/60 text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Job</th>
+                  <th className="px-4 py-3 font-medium">Client</th>
+                  <th className="px-4 py-3 font-medium">Trade</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contractor.bookings.map((booking) => (
+                  <tr key={booking.id} className="border-b border-line/70 last:border-0">
+                    <td className="px-4 py-3 font-mono text-xs">
+                      <Link href={`/admin/jobs?q=${booking.publicId}`} className="font-semibold text-ember">
+                        {booking.publicId}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      {booking.customer ? (
+                        <Link href={`/admin/clients/${booking.customer.id}`} className="text-navy hover:underline">
+                          {booking.customer.name}
+                        </Link>
+                      ) : (
+                        booking.customerName
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{getTrade(booking.trade)?.name ?? booking.trade}</td>
+                    <td className="px-4 py-3">
+                      <AdminJobStatus id={booking.id} status={booking.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

@@ -2,16 +2,16 @@
 
 Any trade service in the **Kansas City metro** — emergency or routine. One website / customer app experience for homeowners and property managers. Not a plumbing-only shop, not a UK WordPress port, not a national lead mill.
 
-This repo was an empty README. v1 is a Next.js App Router product: guided booking, contractor signup + public profiles, job status, and a lightweight ops board.
+This repo was an empty README. v1 is a Next.js App Router product: guided booking, contractor signup + public profiles, job status, and a private `/admin` backend for clients and subcontractors.
 
 ## Positioning
 
 - **All trades.** Plumbing, Electrical, HVAC, Roofing, Handyman/carpentry, Painting, Flooring, Appliance repair, Locksmith, Pest control, Landscaping, Cleaning, Garage door, Concrete/masonry, Fencing, Windows & doors, Water damage/restoration, plus **General contractor / Other**.
 - **KC metro only.** Kansas City (MO and KS), Overland Park, Olathe, Independence, Lee’s Summit, Shawnee, Lenexa, Leawood, Blue Springs, Liberty, and nearby ZIPs. Non-metro cities and ZIPs are rejected with a clear message.
 - **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` if needed; the UI works without env setup.
-- **Licensed contractors.** Partners apply at `/contractors/signup`. Ops approves/rejects. Approved shops get a public profile and can be chosen during booking.
+- **Licensed contractors.** Partners apply at `/contractors/signup`. Admin approves/rejects at `/admin/contractors`. Approved shops get a public profile and can be chosen during booking.
 - **Marketplace payments.** Customer → **Trades on Demand / Trademark Walls** (Stripe Checkout) → contractor payout later. No Connect transfers in Phase 1. No pay-the-pro-directly flow.
-- **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, ops review + TOD ledger. No contractor mobile app. No live Stripe or SMS.
+- **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, `/admin` for clients + subcontractors + jobs. No contractor mobile app. No live Stripe or SMS.
 
 ## Core booking loop
 
@@ -105,7 +105,18 @@ npm install
 npm run dev
 ```
 
-`npm run dev` generates the Prisma client (no live DB required) and starts Next.js (default [http://localhost:3000](http://localhost:3000)). For booking/ops data you need a `postgresql://` `DATABASE_URL` (Neon branch or local Postgres), then `npm run db:migrate`.
+`npm run dev` generates the Prisma client (no live DB required) and starts Next.js (default [http://localhost:3000](http://localhost:3000)). For booking/admin data you need a `postgresql://` `DATABASE_URL` (Neon branch or local Postgres), then `npm run db:migrate`.
+
+### Admin backend (`/admin`)
+
+Password-protected owner UI (same cookie as the old `/ops` board; `/ops` redirects here).
+
+- `/admin` — counts + recent clients + pending subcontractors  
+- `/admin/clients` / `/admin/clients/[id]` — search, edit contact, edit job-site addresses, booking history, TOD payments  
+- `/admin/contractors` / `/admin/contractors/[id]` — all statuses, filter by trade, edit profile/rates, approve/reject, assigned jobs  
+- `/admin/jobs` — booking overview with links back to client/subcontractor  
+
+Set `ADMIN_PASSWORD` (or keep `OPS_PASSWORD`). Default in `.env.example` is `dispatch`. Client records stay private; they are not listed on `/contractors`.
 
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
@@ -132,7 +143,8 @@ npx prisma db seed
 | `POSTGRES_PRISMA_URL` / `POSTGRES_URL` | Alias | Neon/Vercel inject these; the app maps them to `DATABASE_URL`. |
 | `DATABASE_URL_UNPOOLED` | No | Optional Neon direct URL; used if `DATABASE_URL` is unset. |
 | `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` | No | Tap-to-call. Hardcoded default is **8165160735** — displays **(816) 516-0735**, links `tel:+18165160735`. Demos work with no env file. |
-| `OPS_PASSWORD` | Yes | Password for `/ops` (default in `.env.example`: `dispatch`) |
+| `ADMIN_PASSWORD` | Yes (or `OPS_PASSWORD`) | Password for `/admin`. Falls back to `OPS_PASSWORD`, then `dispatch`. |
+| `OPS_PASSWORD` | Compat | Still accepted if `ADMIN_PASSWORD` is unset. `/ops` redirects to `/admin`. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |
 | `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
 | `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |
@@ -148,12 +160,14 @@ npx prisma db seed
 | `/contractors/signup` `/join` | Licensed contractor application |
 | `/account` `/account/[token]` | Private customer profile (cookie or magic link after first book) |
 | `/status` `/status/[token]` | Customer job status |
-| `/ops` | Jobs, contractor review, customers, TOD payments |
+| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` | **Owner backend** — review/edit clients and subcontractors (password: `ADMIN_PASSWORD` or `OPS_PASSWORD`) |
+| `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |
 | `/api/stripe/webhook` | Stripe signature-verified payment updates |
 | `/api/contractors` | Public list (approved) + signup POST |
 | `/api/status/[token]` | Lookup by job ID or token |
-| `/api/ops/*` | Authenticated jobs + contractor review |
+| `/api/admin/*` | Authenticated admin login + client/contractor/job edits |
+| `/api/ops/*` | Same cookie auth; older ops endpoints still work |
 
 ## Out of scope (v1)
 

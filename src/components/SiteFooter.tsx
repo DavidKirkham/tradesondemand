@@ -51,7 +51,7 @@ export function SiteFooter() {
               <Link href="/contact">Contact</Link>
             </li>
             <li>
-              <Link href="/ops">Ops board</Link>
+              <Link href="/admin">Admin</Link>
             </li>
           </ul>
         </div>
