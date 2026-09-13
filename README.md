@@ -80,7 +80,7 @@ npx prisma db seed
 | `/` `/services` `/about` `/contact` `/faqs` | Marketing, KC copy |
 | `/book` | Guided booking wizard |
 | `/contractors` | Approved contractor directory |
-| `/contractors/[slug]` | Public profile (approved only) |
+| `/contractors/[slug]` | Public profile (approved only; slug, public ID, or id) |
 | `/contractors/signup` `/join` | Licensed contractor application |
 | `/account` | Private customer profile (email + phone after first book) |
 | `/status` `/status/[token]` | Customer job status |

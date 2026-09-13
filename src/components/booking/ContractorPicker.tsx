@@ -15,7 +15,7 @@ export function ContractorPicker({
   trade: string;
   urgency: string;
   selectedId: string;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, contractor?: PublicContractor) => void;
 }) {
   const [rows, setRows] = useState<PublicContractor[] | null>(null);
 
@@ -24,7 +24,12 @@ export function ContractorPicker({
     fetch(`/api/contractors?trade=${encodeURIComponent(trade)}`)
       .then((response) => response.json())
       .then((payload: { contractors?: PublicContractor[] }) => {
-        if (!cancelled) setRows(payload.contractors ?? []);
+        if (cancelled) return;
+        const list = payload.contractors ?? [];
+        setRows(list);
+        const match = list.find((row) => row.id === selectedId);
+        if (selectedId && match) onSelect(match.id, match);
+        if (selectedId && !match) onSelect("");
       })
       .catch(() => {
         if (!cancelled) setRows([]);
@@ -66,7 +71,7 @@ export function ContractorPicker({
             <button
               key={contractor.id}
               type="button"
-              onClick={() => onSelect(contractor.id)}
+              onClick={() => onSelect(contractor.id, contractor)}
               className={`flex w-full gap-3 rounded-2xl border p-4 text-left ${
                 active ? "border-navy bg-navy/5" : "border-line bg-cream/40"
               }`}

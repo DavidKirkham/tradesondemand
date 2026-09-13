@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { BookingWizard } from "@/components/booking/BookingWizard";
-import { prisma } from "@/lib/prisma";
+import { findApprovedContractor } from "@/lib/contractor-lookup";
 import { isKnownTrade } from "@/lib/trades";
 
 export const metadata: Metadata = {
@@ -21,12 +21,7 @@ export default async function BookPage({
 
   let initialContractorId = "";
   if (params.contractor) {
-    const contractor = await prisma.contractor.findFirst({
-      where: {
-        status: "APPROVED",
-        OR: [{ slug: params.contractor }, { id: params.contractor }],
-      },
-    });
+    const contractor = await findApprovedContractor(params.contractor);
     if (contractor) initialContractorId = contractor.id;
   }
 

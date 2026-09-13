@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContractorAvatar } from "@/components/contractors/ContractorAvatar";
 import { rateForTrade, toPublicContractor } from "@/lib/contractor";
+import { findApprovedContractor } from "@/lib/contractor-lookup";
 import { formatUsd } from "@/lib/money";
-import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const row = await prisma.contractor.findUnique({ where: { slug } });
-  if (!row || row.status !== "APPROVED") {
+  const row = await findApprovedContractor(slug);
+  if (!row) {
     return { title: "Contractor" };
   }
   return { title: row.businessName, description: `${row.businessName} — licensed KC metro partner` };
@@ -28,8 +28,8 @@ export default async function ContractorProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const row = await prisma.contractor.findUnique({ where: { slug } });
-  if (!row || row.status !== "APPROVED") notFound();
+  const row = await findApprovedContractor(slug);
+  if (!row) notFound();
 
   const contractor = toPublicContractor(row);
   const primaryTrade = contractor.trades[0];
@@ -39,7 +39,12 @@ export default async function ContractorProfilePage({
       <div className="flex gap-4">
         <ContractorAvatar name={contractor.businessName} size="lg" />
         <div>
-          <p className="stamp text-xs text-ok">Licensed · KC metro</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="stamp text-xs text-ok">Licensed · KC metro</p>
+            <span className="rounded-full bg-ok/10 px-2 py-0.5 text-[0.7rem] font-semibold text-ok">
+              Verified partner
+            </span>
+          </div>
           <h1 className="mt-1 font-display text-4xl text-navy">{contractor.businessName}</h1>
           <p className="mt-2 text-sm text-muted">
             {contractor.licenseType} · {contractor.licenseState} · #{contractor.licenseNumber}
@@ -48,7 +53,14 @@ export default async function ContractorProfilePage({
         </div>
       </div>
 
-      {contractor.bio ? <p className="mt-6 text-base leading-7 text-muted">{contractor.bio}</p> : null}
+      {contractor.bio ? (
+        <p className="mt-6 text-base leading-7 text-muted">{contractor.bio}</p>
+      ) : (
+        <p className="mt-6 text-base leading-7 text-muted">
+          This licensed KC partner has not added a longer bio yet. Rates, license, and service area
+          below are from their approved application.
+        </p>
+      )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-line bg-paper p-5">

@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { evaluateServiceArea } from "@/lib/kc-metro";
+import { rateForTrade, type PublicContractor } from "@/lib/contractor";
+import { formatUsd } from "@/lib/money";
 import { getQuotePreview, type Urgency } from "@/lib/quotes";
 import { TRADES } from "@/lib/trades";
 import { CallButton } from "../CallButton";
+import { ContractorAvatar } from "../contractors/ContractorAvatar";
 import { ContractorPicker } from "./ContractorPicker";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
@@ -66,13 +69,19 @@ export function BookingWizard({
   const [error, setError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ publicId: string; token: string } | null>(null);
+  const [partner, setPartner] = useState<PublicContractor | null>(null);
 
   const selectedTrade = TRADES.find((trade) => trade.slug === form.trade);
   const quote =
     form.trade && form.urgency ? getQuotePreview(form.trade, form.urgency) : null;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+      if (key === "trade") next.contractorId = "";
+      return next;
+    });
+    if (key === "trade") setPartner(null);
     setError("");
   }
 
@@ -149,6 +158,7 @@ export function BookingWizard({
           You paid Trades on Demand (stubbed checkout) — not the contractor. Open your private
           profile for receipts and job history.
         </p>
+        <HiringSummary partner={partner} trade={form.trade} />
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href={`/status/${result.token}`}
@@ -335,7 +345,10 @@ export function BookingWizard({
               trade={form.trade}
               urgency={form.urgency}
               selectedId={form.contractorId}
-              onSelect={(id) => update("contractorId", id)}
+              onSelect={(id, contractor) => {
+                update("contractorId", id);
+                setPartner(contractor ?? null);
+              }}
             />
           </section>
         ) : null}
@@ -355,6 +368,7 @@ export function BookingWizard({
               <p className="mt-4 text-3xl font-semibold text-gold">{quote.holdLabel}</p>
               <p className="mt-3 text-sm leading-6 text-cream/80">{quote.holdDetail}</p>
             </div>
+            <HiringSummary partner={partner} trade={form.trade} />
             <p className="text-sm leading-6 text-muted">{quote.nextStep}</p>
             <p className="text-xs leading-5 text-muted">{quote.disclaimer}</p>
           </section>
@@ -392,7 +406,7 @@ export function BookingWizard({
               Checkout is with Trades on Demand. The selected contractor never sees your card and
               is not the merchant of record.
             </p>
-            <Review form={form} />
+            <Review form={form} partner={partner} />
           </section>
         ) : null}
 
@@ -471,30 +485,63 @@ function Field({
   );
 }
 
-function Review({ form }: { form: FormState }) {
+function Review({ form, partner }: { form: FormState; partner: PublicContractor | null }) {
   const trade = useMemo(() => TRADES.find((item) => item.slug === form.trade), [form.trade]);
   return (
-    <dl className="rounded-xl border border-line bg-cream/50 px-4 py-3 text-sm">
-      <div className="flex justify-between gap-4 py-1">
-        <dt className="text-muted">Trade</dt>
-        <dd className="font-medium text-navy">{trade?.name}</dd>
+    <div className="space-y-3">
+      <HiringSummary partner={partner} trade={form.trade} />
+      <dl className="rounded-xl border border-line bg-cream/50 px-4 py-3 text-sm">
+        <div className="flex justify-between gap-4 py-1">
+          <dt className="text-muted">Trade</dt>
+          <dd className="font-medium text-navy">{trade?.name}</dd>
+        </div>
+        <div className="flex justify-between gap-4 py-1">
+          <dt className="text-muted">Urgency</dt>
+          <dd className="font-medium capitalize text-navy">{form.urgency}</dd>
+        </div>
+        <div className="flex justify-between gap-4 py-1">
+          <dt className="text-muted">Address</dt>
+          <dd className="text-right font-medium text-navy">
+            {form.street}, {form.city}, {form.state} {form.zip}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-4 py-1">
+          <dt className="text-muted">Contractor</dt>
+          <dd className="text-right font-medium text-navy">
+            {partner ? partner.businessName : "First available match"}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function HiringSummary({ partner, trade }: { partner: PublicContractor | null; trade: string }) {
+  if (!partner) {
+    return (
+      <div className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted">
+        First available — dispatch will match an approved licensed KC partner. Pending applicants
+        are never assigned from this form.
       </div>
-      <div className="flex justify-between gap-4 py-1">
-        <dt className="text-muted">Urgency</dt>
-        <dd className="font-medium capitalize text-navy">{form.urgency}</dd>
+    );
+  }
+
+  const rate = rateForTrade(partner, trade);
+
+  return (
+    <div className="flex gap-3 rounded-xl border border-line bg-paper px-4 py-3">
+      <ContractorAvatar name={partner.businessName} size="sm" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ok">Who you&apos;re hiring</p>
+        <p className="font-display text-lg text-navy">{partner.businessName}</p>
+        <p className="text-sm text-navy">
+          {formatUsd(rate.hourlyCents)}/hr · {formatUsd(rate.minimumCents)} trip min · {partner.licenseState}{" "}
+          licensed
+        </p>
+        <Link href={`/contractors/${partner.slug}`} className="mt-1 inline-block text-sm font-semibold text-ember">
+          Open public profile
+        </Link>
       </div>
-      <div className="flex justify-between gap-4 py-1">
-        <dt className="text-muted">Address</dt>
-        <dd className="text-right font-medium text-navy">
-          {form.street}, {form.city}, {form.state} {form.zip}
-        </dd>
-      </div>
-      <div className="flex justify-between gap-4 py-1">
-        <dt className="text-muted">Contractor</dt>
-        <dd className="text-right font-medium text-navy">
-          {form.contractorId ? "Requested licensed partner" : "First available match"}
-        </dd>
-      </div>
-    </dl>
+    </div>
   );
 }
