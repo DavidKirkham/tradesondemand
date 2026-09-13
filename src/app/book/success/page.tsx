@@ -69,7 +69,7 @@ export default async function BookSuccessPage({
           </Link>
         ) : null}
         <Link href="/account" className="inline-flex h-12 items-center justify-center text-sm font-semibold text-navy">
-          My profile / receipts
+          My jobs / receipts
         </Link>
       </div>
     </div>

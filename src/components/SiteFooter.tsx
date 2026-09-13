@@ -42,7 +42,7 @@ export function SiteFooter() {
               <Link href="/status">Job status</Link>
             </li>
             <li>
-              <Link href="/account">My profile / jobs</Link>
+              <Link href="/account">Customer portal</Link>
             </li>
             <li>
               <Link href="/about">About</Link>

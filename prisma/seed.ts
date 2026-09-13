@@ -1,17 +1,32 @@
 import { PrismaClient } from "@prisma/client";
 import { hashContractorPassword } from "../src/lib/contractor-password";
+import { hashCustomerPassword } from "../src/lib/customer-password";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const customerPasswordHash = await hashCustomerPassword("riley-demo-10");
   const customer = await prisma.customer.upsert({
     where: { email: "riley@example.com" },
-    update: {},
+    update: { passwordHash: customerPasswordHash, sessionToken: null },
     create: {
       email: "riley@example.com",
       name: "Riley Chen",
       phone: "8165550144",
       token: "demo-customer-token-kc",
+      passwordHash: customerPasswordHash,
+      preferredContact: "PHONE",
+    },
+  });
+
+  const claimCustomer = await prisma.customer.upsert({
+    where: { email: "jordan@example.com" },
+    update: {},
+    create: {
+      email: "jordan@example.com",
+      name: "Jordan Hale",
+      phone: "8165550133",
+      token: "demo-claim-customer-kc",
       preferredContact: "PHONE",
     },
   });
@@ -185,6 +200,39 @@ async function main() {
             type: "DEPOSIT",
             status: "PAID",
             note: "Seeded TOD trip minimum (paid)",
+          },
+        },
+      },
+    });
+  }
+
+  const claimExisting = await prisma.booking.findUnique({ where: { publicId: "TOD-CLAIM01" } });
+  if (!claimExisting) {
+    await prisma.booking.create({
+      data: {
+        publicId: "TOD-CLAIM01",
+        token: "demo-claim-job-kc",
+        trade: "electrical",
+        problem: "Kitchen GFCI will not reset in a Midtown duplex. Booked before the portal had passwords.",
+        urgency: "routine",
+        street: "3121 Troost Ave",
+        city: "Kansas City",
+        state: "MO",
+        zip: "64109",
+        customerName: claimCustomer.name,
+        customerPhone: claimCustomer.phone,
+        customerEmail: claimCustomer.email,
+        customerId: claimCustomer.id,
+        quoteSummary: "Routine electrical visit",
+        events: { create: { status: "RECEIVED", note: "Seeded claim-path ticket" } },
+        payments: {
+          create: {
+            publicId: "PAY-CLAIM01",
+            customerId: claimCustomer.id,
+            amountCents: 14900,
+            type: "DEPOSIT",
+            status: "PENDING",
+            note: "Seeded trip hold — pending with TOD",
           },
         },
       },

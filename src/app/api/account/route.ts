@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const customer = await getCustomerFromCookie();
   if (!customer) {
-    return NextResponse.json({ error: "Sign in with the email and phone from your booking." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
   return NextResponse.json({ customer: { name: customer.name, email: customer.email, phone: customer.phone, preferredContact: customer.preferredContact } });
 }

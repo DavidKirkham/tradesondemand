@@ -93,16 +93,20 @@ model ContractorPasswordReset {
 }
 
 model Customer {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  name              String
-  phone             String
-  token             String    @unique
-  preferredContact  String    @default("PHONE")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  bookings          Booking[]
-  payments          Payment[]
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  phone              String
+  token              String    @unique
+  passwordHash       String?
+  sessionToken       String?   @unique
+  resetCodeHash      String?
+  resetCodeExpiresAt DateTime?
+  preferredContact   String    @default("PHONE")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  bookings           Booking[]
+  payments           Payment[]
 }
 
 model Payment {

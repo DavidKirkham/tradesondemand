@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { validateAccountLookup } from "@/lib/customer";
-import { customerCookieOptions } from "@/lib/customer-auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -18,12 +17,16 @@ export async function POST(request: Request) {
   });
   if (!customer) {
     return NextResponse.json(
-      { error: "No private profile matches that email and phone. Book a job first." },
+      { error: "No private profile matches that email and phone. Book a job first, or create an account." },
       { status: 404 },
     );
   }
-  const response = NextResponse.json({ ok: true });
-  const cookie = customerCookieOptions(customer.token);
-  response.cookies.set(cookie.name, cookie.value, cookie);
-  return response;
+
+  return NextResponse.json({
+    ok: true,
+    needsPassword: !customer.passwordHash,
+    message: customer.passwordHash
+      ? "This profile already has a password. Sign in, or reset it from the login page."
+      : "Claim this profile by choosing a password.",
+  });
 }

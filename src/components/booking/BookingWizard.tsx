@@ -221,7 +221,7 @@ export function BookingWizard({
             href="/account"
             className="inline-flex h-12 items-center justify-center rounded-full border border-line px-5 text-sm font-semibold text-navy"
           >
-            My profile
+            My jobs
           </Link>
           <CallButton variant="ember" />
         </div>

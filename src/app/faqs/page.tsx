@@ -21,7 +21,7 @@ const FAQS = [
   },
   {
     q: "Will you take a payment online?",
-    a: "You pay Trades on Demand — never the contractor directly. Deposits go through Stripe Checkout on the Trademark Walls platform account. The webhook marks the receipt paid. TOD pays the partner later. SMS is still out of scope.",
+    a: "You pay Trades on Demand — never the contractor directly. Deposits and balances go through Stripe Checkout on the Trademark Walls platform account. Pay from booking or from /account after you sign in. The webhook marks the receipt paid. TOD pays the partner later.",
   },
   {
     q: "I rent in Midtown / a Johnson County apartment. Can I book?",
@@ -29,7 +29,7 @@ const FAQS = [
   },
   {
     q: "Where is my customer profile?",
-    a: "Booking creates a private profile keyed to your email. Open /account with that email and phone, or use the magic link from confirmation. Addresses and receipts stay off the public contractor directory.",
+    a: "Open /account and sign in with the email on your booking plus a password. New customers can create an account there. If you booked before passwords existed, claim the profile with that email and phone, or use the confirmation link to set a password. Forgot password texts a code to the phone on file. Addresses and receipts stay off the public contractor directory.",
   },
   {
     q: "How do I check status?",
