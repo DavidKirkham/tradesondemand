@@ -7,15 +7,19 @@ import {
 import { depositForBooking } from "./payments";
 
 const previousSmokeDeposit = process.env.SMOKE_DEPOSIT_CENTS;
+const previousPublicSmokeDeposit = process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS;
 
 afterEach(() => {
   if (previousSmokeDeposit === undefined) delete process.env.SMOKE_DEPOSIT_CENTS;
   else process.env.SMOKE_DEPOSIT_CENTS = previousSmokeDeposit;
+  if (previousPublicSmokeDeposit === undefined) delete process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS;
+  else process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS = previousPublicSmokeDeposit;
 });
 
 describe("depositForBooking", () => {
   it("uses contractor emergency rate when urgent", () => {
     delete process.env.SMOKE_DEPOSIT_CENTS;
+    delete process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS;
     const result = depositForBooking({
       urgency: "emergency",
       trade: "plumbing",
@@ -32,6 +36,7 @@ describe("depositForBooking", () => {
 
   it("uses first-available emergency hold", () => {
     delete process.env.SMOKE_DEPOSIT_CENTS;
+    delete process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS;
     expect(depositForBooking({ urgency: "emergency", trade: "plumbing" }).amountCents).toBe(14900);
   });
 
@@ -56,14 +61,30 @@ describe("depositForBooking", () => {
   });
 
   it("uses SMOKE_DEPOSIT_CENTS when set to a positive integer", () => {
+    delete process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS;
     process.env.SMOKE_DEPOSIT_CENTS = "100";
     const result = depositForBooking({ urgency: "emergency", trade: "plumbing" });
     expect(result.amountCents).toBe(100);
     expect(result.summary).toBe("TOD smoke deposit $1.00");
   });
 
+  it("uses NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS when the server var is unset", () => {
+    delete process.env.SMOKE_DEPOSIT_CENTS;
+    process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS = "100";
+    const result = depositForBooking({ urgency: "emergency", trade: "plumbing" });
+    expect(result.amountCents).toBe(100);
+    expect(result.summary).toBe("TOD smoke deposit $1.00");
+  });
+
+  it("prefers SMOKE_DEPOSIT_CENTS when both smoke vars are set", () => {
+    process.env.SMOKE_DEPOSIT_CENTS = "100";
+    process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS = "250";
+    expect(depositForBooking({ urgency: "emergency", trade: "plumbing" }).amountCents).toBe(100);
+  });
+
   it("uses the selected contractor trip minimum for routine work", () => {
     delete process.env.SMOKE_DEPOSIT_CENTS;
+    delete process.env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS;
     const result = depositForBooking({
       urgency: "routine",
       trade: "hvac",

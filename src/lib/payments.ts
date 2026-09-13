@@ -41,12 +41,19 @@ export function paymentStatusLabel(status: string): string {
   }
 }
 
-function smokeDepositCents(env: NodeJS.ProcessEnv = process.env): number | null {
-  const raw = env.SMOKE_DEPOSIT_CENTS?.trim();
-  if (!raw || !/^\d+$/.test(raw)) return null;
-  const cents = Number(raw);
+function parsePositiveCents(raw: string | undefined): number | null {
+  const value = raw?.trim();
+  if (!value || !/^\d+$/.test(value)) return null;
+  const cents = Number(value);
   if (!Number.isInteger(cents) || cents <= 0) return null;
   return cents;
+}
+
+function smokeDepositCents(env: NodeJS.ProcessEnv = process.env): number | null {
+  return (
+    parsePositiveCents(env.SMOKE_DEPOSIT_CENTS) ??
+    parsePositiveCents(env.NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS)
+  );
 }
 
 export function depositForBooking(input: {
