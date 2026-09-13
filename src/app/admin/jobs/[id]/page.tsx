@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminAssignContractor } from "@/components/admin/AdminAssignContractor";
 import { AdminGate } from "@/components/admin/AdminGate";
+import { AdminJobDelete } from "@/components/admin/AdminJobDelete";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
+import { blockingJobPayments } from "@/lib/admin-job-delete";
 import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
@@ -35,6 +37,16 @@ async function JobDetail({ id }: { id: string }) {
       contractor: true,
       customer: true,
       events: { orderBy: { createdAt: "desc" }, take: 12 },
+      payments: {
+        select: {
+          id: true,
+          publicId: true,
+          status: true,
+          type: true,
+          amountCents: true,
+          stripeCheckoutSessionId: true,
+        },
+      },
     },
     omit: BOOKING_SMS_OMIT,
   });
@@ -53,6 +65,8 @@ async function JobDetail({ id }: { id: string }) {
   } catch (error) {
     if (!isMissingBookingSmsColumn(error)) throw error;
   }
+
+  const blockedPayments = blockingJobPayments(job.payments);
 
   const approved = await prisma.contractor.findMany({
     where: { status: "APPROVED" },
@@ -162,6 +176,13 @@ async function JobDetail({ id }: { id: string }) {
           </ol>
         )}
       </section>
+
+      <AdminJobDelete
+        id={job.id}
+        publicId={job.publicId}
+        blockingPayments={blockedPayments}
+        cascadePaymentCount={job.payments.length - blockedPayments.length}
+      />
     </div>
   );
 }

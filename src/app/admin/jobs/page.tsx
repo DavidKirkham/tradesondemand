@@ -18,17 +18,21 @@ export const dynamic = "force-dynamic";
 export default async function AdminJobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; deleted?: string }>;
 }) {
   const params = await searchParams;
   return (
     <AdminGate>
-      <JobsList q={searchNeedle(params.q)} status={params.status ?? "ALL"} />
+      <JobsList
+        q={searchNeedle(params.q)}
+        status={params.status ?? "ALL"}
+        deleted={searchNeedle(params.deleted)}
+      />
     </AdminGate>
   );
 }
 
-async function JobsList({ q, status }: { q: string; status: string }) {
+async function JobsList({ q, status, deleted }: { q: string; status: string; deleted: string }) {
   if (!(await isOpsAuthenticated())) return null;
   const [jobs, approved] = await Promise.all([
     prisma.booking.findMany({
@@ -69,8 +73,15 @@ async function JobsList({ q, status }: { q: string; status: string }) {
       <h1 className="font-display text-3xl text-navy">Jobs</h1>
       <p className="mt-2 text-sm text-muted">
         Assign each job to an approved subcontractor with the picker on the card. Reassignment asks
-        for confirmation. The shop then sees the ticket under /contractor.
+        for confirmation. The shop then sees the ticket under /contractor. Delete a job from its
+        detail page after typing the job ID.
       </p>
+      {deleted ? (
+        <p className="mt-4 rounded-2xl border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-navy">
+          {deleted} was deleted. Status history, client SMS, and any pending or refunded invoices on
+          that ticket are gone.
+        </p>
+      ) : null}
       <AdminSearch
         action="/admin/jobs"
         q={q}
@@ -129,6 +140,9 @@ async function JobsList({ q, status }: { q: string; status: string }) {
                 <th className="px-4 py-3 font-medium">Subcontractor</th>
                 <th className="px-4 py-3 font-medium">Assign</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -179,6 +193,14 @@ async function JobsList({ q, status }: { q: string; status: string }) {
                   </td>
                   <td className="px-4 py-3">
                     <AdminJobStatus id={job.id} status={job.status} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/jobs/${job.id}#delete`}
+                      className="text-sm font-semibold text-danger hover:underline"
+                    >
+                      Delete
+                    </Link>
                   </td>
                 </tr>
               ))}

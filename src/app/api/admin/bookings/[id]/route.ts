@@ -1,10 +1,43 @@
 import { NextResponse } from "next/server";
 import { validateAdminBookingAddress } from "@/lib/admin";
+import { deleteAdminJob } from "@/lib/admin-job-delete";
+import { prismaFailureResponse } from "@/lib/api-errors";
 import { isBookingStatus } from "@/lib/booking";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  if (!(await isOpsAuthenticated())) {
+    return NextResponse.json({ error: "Sign in to admin." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  let confirm = "";
+  try {
+    const body = (await request.json()) as { confirm?: string };
+    confirm = String(body.confirm ?? "");
+  } catch {
+    return NextResponse.json({ error: "Type the job ID to confirm deletion." }, { status: 400 });
+  }
+
+  try {
+    const result = await deleteAdminJob(id, confirm);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error, ...(result.payments ? { payments: result.payments } : {}) },
+        { status: result.status },
+      );
+    }
+    return NextResponse.json({ ok: true, publicId: result.publicId });
+  } catch (error) {
+    return prismaFailureResponse(error, "Could not delete job.");
+  }
+}
 
 export async function PATCH(
   request: Request,

@@ -11,17 +11,17 @@ export const dynamic = "force-dynamic";
 export default async function AdminClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; deleted?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, deleted } = await searchParams;
   return (
     <AdminGate>
-      <ClientsList q={searchNeedle(q)} />
+      <ClientsList q={searchNeedle(q)} deleted={searchNeedle(deleted)} />
     </AdminGate>
   );
 }
 
-async function ClientsList({ q }: { q: string }) {
+async function ClientsList({ q, deleted }: { q: string; deleted: string }) {
   if (!(await isOpsAuthenticated())) return null;
   const digits = searchDigits(q);
   const clients = await prisma.customer.findMany({
@@ -44,8 +44,15 @@ async function ClientsList({ q }: { q: string }) {
       <p className="stamp text-xs text-ember">Private</p>
       <h1 className="font-display text-3xl text-navy">Clients</h1>
       <p className="mt-2 text-sm text-muted">
-        Customer profiles are not public. Search name, email, phone, or job ID.
+        Customer profiles are not public. Search name, email, phone, or job ID. Delete a client from
+        its detail page after typing their name.
       </p>
+      {deleted ? (
+        <p className="mt-4 rounded-2xl border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-navy">
+          {deleted} was deleted. Portal login is gone. Completed or cancelled jobs stay on the books
+          as unlinked tickets.
+        </p>
+      ) : null}
       <AdminSearch action="/admin/clients" q={q} placeholder="Search name, email, phone, or job ID" />
 
       {clients.length === 0 ? (
@@ -62,6 +69,9 @@ async function ClientsList({ q }: { q: string }) {
                 <th className="px-4 py-3 font-medium">Phone</th>
                 <th className="px-4 py-3 font-medium">Jobs</th>
                 <th className="px-4 py-3 font-medium">Pays</th>
+                <th className="px-4 py-3 font-medium">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -76,6 +86,14 @@ async function ClientsList({ q }: { q: string }) {
                   <td className="px-4 py-3 text-muted">{formatPhone(row.phone)}</td>
                   <td className="px-4 py-3">{row._count.bookings}</td>
                   <td className="px-4 py-3">{row._count.payments}</td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/clients/${row.id}#delete`}
+                      className="text-sm font-semibold text-danger hover:underline"
+                    >
+                      Delete
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
