@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   buildAcceptEtaSms,
   buildContractorCustomerSms,
+  buildContractorPasswordResetSms,
   describeContractorCustomerSms,
   describeContractorEtaSms,
   isTwilioConfigured,
@@ -90,6 +91,18 @@ describe("describeContractorCustomerSms", () => {
         error: "Customer number is a reserved 555 test number. Twilio will not deliver it.",
       }),
     ).toMatch(/SMS skipped: Customer number is a reserved 555/);
+  });
+});
+
+describe("buildContractorPasswordResetSms", () => {
+  it("includes the one-time code and reset link", () => {
+    const body = buildContractorPasswordResetSms({
+      code: "482193",
+      resetUrl: "https://todkc.com/contractor/r/reset-token-example",
+    });
+    expect(body).toContain("482193");
+    expect(body).toContain("https://todkc.com/contractor/r/reset-token-example");
+    expect(body).toMatch(/20 min/i);
   });
 });
 

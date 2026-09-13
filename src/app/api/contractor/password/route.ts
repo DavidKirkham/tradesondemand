@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prismaFailureResponse } from "@/lib/api-errors";
 import { isValidEmail, isValidUsPhone } from "@/lib/phone";
 import {
+  clearContractorPasswordReset,
   clearContractorSetupCookieOptions,
   contractorCookieOptions,
   getApprovedContractorFromCookie,
@@ -109,6 +110,7 @@ export async function PATCH(request: Request) {
   try {
     const passwordHash = await hashContractorPassword(password);
     const sessionToken = await issueContractorSession(contractor.id, { passwordHash });
+    await clearContractorPasswordReset(contractor.id);
     const response = NextResponse.json({ ok: true });
     const cookie = contractorCookieOptions(sessionToken);
     response.cookies.set(cookie.name, cookie.value, cookie);
