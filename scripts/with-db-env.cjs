@@ -30,27 +30,35 @@ const direct = first(
   pooled,
 );
 
-if (!pooled) {
-  console.error(
-    "Missing DATABASE_URL. Vercel/Neon injects this (or POSTGRES_PRISMA_URL). Locally use a postgresql:// URL from .env.example.",
-  );
-  process.exit(1);
-}
-
-if (pooled.startsWith("file:")) {
-  console.error(
-    "DATABASE_URL is a SQLite file: URL. This app requires PostgreSQL (postgresql:// or postgres://). Update Vercel/Neon or .env.",
-  );
-  process.exit(1);
-}
-
-process.env.DATABASE_URL = pooled;
-process.env.DATABASE_URL_UNPOOLED = direct;
-
 const args = process.argv.slice(2);
 if (args.length === 0) {
   console.error("Usage: node scripts/with-db-env.cjs <prisma args>");
   process.exit(1);
+}
+
+const isGenerate = args[0] === "generate";
+const isMigrate = args[0] === "migrate";
+
+if (!pooled && isGenerate) {
+  process.env.DATABASE_URL = "postgresql://prisma:prisma@127.0.0.1:5432/prisma";
+  process.env.DATABASE_URL_UNPOOLED = process.env.DATABASE_URL;
+  console.warn("DATABASE_URL unset — generating Prisma client with a placeholder Postgres URL (no live connection).");
+} else if (!pooled && isMigrate) {
+  console.warn("Skipping prisma migrate — DATABASE_URL is not set. Runtime still requires a Postgres URL.");
+  process.exit(0);
+} else if (!pooled) {
+  console.error(
+    "Missing DATABASE_URL. Vercel/Neon injects this (or POSTGRES_PRISMA_URL). Locally use a postgresql:// URL from .env.example.",
+  );
+  process.exit(1);
+} else if (pooled.startsWith("file:")) {
+  console.error(
+    "DATABASE_URL is a SQLite file: URL. This app requires PostgreSQL (postgresql:// or postgres://). Update Vercel/Neon or .env.",
+  );
+  process.exit(1);
+} else {
+  process.env.DATABASE_URL = pooled;
+  process.env.DATABASE_URL_UNPOOLED = direct;
 }
 
 const prismaBin = path.join(__dirname, "..", "node_modules", ".bin", "prisma");

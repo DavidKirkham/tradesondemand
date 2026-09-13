@@ -5,6 +5,8 @@ import { createCustomerToken, createPaymentPublicId } from "@/lib/customer";
 import { customerCookieOptions } from "@/lib/customer-auth";
 import { depositForBooking } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
+import { isStripeCheckoutConfigured, stripeMissingKeysMessage } from "@/lib/stripe";
+import { createPlatformCheckoutSession } from "@/lib/stripe-checkout";
 
 export const dynamic = "force-dynamic";
 
@@ -112,15 +114,48 @@ export async function POST(request: Request) {
           customerId: customer.id,
           amountCents: deposit.amountCents,
           type: "DEPOSIT",
-          status: deposit.amountCents === 0 ? "PAID" : "PAID",
+          status: deposit.amountCents === 0 ? "PAID" : "PENDING",
           note:
             deposit.amountCents === 0
-              ? "No trip deposit. Future job balance is paid to Trades on Demand, not the contractor. Stripe stub."
-              : "Stubbed TOD checkout — customer paid Trades on Demand, not the contractor. No live Stripe.",
+              ? "No trip deposit. Future job balance is paid to Trades on Demand (Trademark Walls), not the contractor."
+              : "Pending Stripe Checkout — you pay Trades on Demand, not the contractor.",
         },
       },
     },
+    include: { payments: true },
   });
+
+  const payment = booking.payments[0];
+  let checkoutUrl: string | null = null;
+  let stripeConfigured = isStripeCheckoutConfigured();
+  let stripeMessage: string | null = null;
+
+  if (deposit.amountCents > 0 && stripeConfigured) {
+    const session = await createPlatformCheckoutSession({
+      request,
+      bookingId: booking.id,
+      bookingPublicId: booking.publicId,
+      bookingToken: booking.token,
+      customerId: customer.id,
+      customerEmail: customer.email,
+      amountCents: deposit.amountCents,
+      paymentType: deposit.checkoutKind,
+      description: deposit.summary,
+    });
+    if ("url" in session) {
+      checkoutUrl = session.url;
+      if (payment) {
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { stripeCheckoutSessionId: session.sessionId },
+        });
+      }
+    } else {
+      stripeMessage = session.error;
+    }
+  } else if (deposit.amountCents > 0 && !stripeConfigured) {
+    stripeMessage = stripeMissingKeysMessage();
+  }
 
   const response = NextResponse.json({
     publicId: booking.publicId,
@@ -128,6 +163,10 @@ export async function POST(request: Request) {
     status: booking.status,
     customerToken: customer.token,
     deposit,
+    checkoutUrl,
+    stripeConfigured,
+    stripeMessage,
+    paymentStatus: payment?.status ?? (deposit.amountCents === 0 ? "PAID" : "PENDING"),
   });
   const cookie = customerCookieOptions(customer.token);
   response.cookies.set(cookie.name, cookie.value, cookie);

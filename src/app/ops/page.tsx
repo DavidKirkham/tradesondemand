@@ -1,6 +1,7 @@
 import { toPublicContractor } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
+import { isStripeCheckoutConfigured } from "@/lib/stripe";
 import { OpsBoard } from "@/components/ops/OpsBoard";
 import { OpsLogin } from "@/components/ops/OpsLogin";
 
@@ -93,6 +94,7 @@ export default async function OpsPage() {
           trade: booking.trade,
         })),
       }))}
+      stripeConfigured={isStripeCheckoutConfigured()}
       initialPayments={payments.map((row) => ({
         id: row.id,
         publicId: row.publicId,
@@ -101,7 +103,9 @@ export default async function OpsPage() {
         status: row.status,
         note: row.note,
         bookingPublicId: row.booking.publicId,
+        bookingToken: row.booking.token,
         customerName: row.customer?.name ?? row.booking.customerName,
+        stripeCheckoutSessionId: row.stripeCheckoutSessionId,
         createdAt: row.createdAt.toISOString(),
       }))}
     />

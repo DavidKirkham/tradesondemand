@@ -69,7 +69,14 @@ export function BookingWizard({
   });
   const [error, setError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ publicId: string; token: string } | null>(null);
+  const [result, setResult] = useState<{
+    publicId: string;
+    token: string;
+    checkoutUrl?: string | null;
+    stripeConfigured?: boolean;
+    stripeMessage?: string | null;
+    paymentStatus?: string;
+  } | null>(null);
   const [partner, setPartner] = useState<PublicContractor | null>(null);
 
   const selectedTrade = TRADES.find((trade) => trade.slug === form.trade);
@@ -139,12 +146,27 @@ export function BookingWizard({
         error?: string;
         publicId?: string;
         token?: string;
+        checkoutUrl?: string | null;
+        stripeConfigured?: boolean;
+        stripeMessage?: string | null;
+        paymentStatus?: string;
       };
       if (!response.ok || !payload.publicId || !payload.token) {
         setError(payload.error || "We couldn't book that just now. Call dispatch.");
         return;
       }
-      setResult({ publicId: payload.publicId, token: payload.token });
+      if (payload.checkoutUrl) {
+        window.location.assign(payload.checkoutUrl);
+        return;
+      }
+      setResult({
+        publicId: payload.publicId,
+        token: payload.token,
+        checkoutUrl: payload.checkoutUrl,
+        stripeConfigured: payload.stripeConfigured,
+        stripeMessage: payload.stripeMessage,
+        paymentStatus: payload.paymentStatus,
+      });
     } catch {
       setError("Network issue. If this is an emergency, call us now.");
     } finally {
@@ -171,9 +193,22 @@ export function BookingWizard({
           </p>
         )}
         <p className="mt-4 text-sm text-muted">
-          You paid Trades on Demand (stubbed checkout) — not the contractor. Open your private
-          profile for receipts and job history.
+          You pay Trades on Demand. Payments are processed by Trademark Walls — never the
+          contractor. Open your private profile for receipts and job history.
         </p>
+        {result.stripeMessage ? (
+          <p className="mt-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-navy">
+            {result.stripeMessage}
+          </p>
+        ) : null}
+        {result.paymentStatus === "PENDING" && !result.checkoutUrl ? (
+          <Link
+            href={`/book/retry?token=${result.token}`}
+            className="mt-3 inline-flex text-sm font-semibold text-ember"
+          >
+            Retry TOD Checkout
+          </Link>
+        ) : null}
         <HiringSummary partner={partner} trade={form.trade} />
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
@@ -374,8 +409,8 @@ export function BookingWizard({
             <div>
               <h2 className="font-display text-xl text-navy">Quote &amp; deposit — straight talk</h2>
               <p className="mt-1 text-sm text-muted">
-                You pay Trades on Demand — never the contractor directly. TOD then pays the partner.
-                Card processing is stubbed in this demo.
+                You pay Trades on Demand — never the contractor directly. Payments are processed by
+                Trademark Walls. TOD then pays the partner.
               </p>
             </div>
             <div className="rounded-2xl bg-navy px-5 py-6 text-cream">

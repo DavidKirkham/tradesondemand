@@ -105,7 +105,9 @@ export default async function AccountPage() {
       </div>
 
       <h2 className="mt-10 font-display text-2xl text-navy">TOD receipts</h2>
-      <p className="mt-1 text-sm text-muted">Payments are collected by Trades on Demand, then we pay the partner.</p>
+      <p className="mt-1 text-sm text-muted">
+        You pay Trades on Demand. Payments are processed by Trademark Walls — then we pay the partner.
+      </p>
       {payments.length === 0 ? (
         <p className="mt-3 text-sm text-muted">Receipts appear after a TOD deposit or job balance.</p>
       ) : null}
@@ -117,6 +119,9 @@ export default async function AccountPage() {
               <p className="text-navy">
                 {paymentTypeLabel(payment.type)} · {payment.booking.publicId}
               </p>
+              {payment.stripeCheckoutSessionId ? (
+                <p className="mt-1 font-mono text-xs text-muted">{payment.stripeCheckoutSessionId}</p>
+              ) : null}
             </div>
             <p className="text-right text-navy">
               {formatUsd(payment.amountCents)}

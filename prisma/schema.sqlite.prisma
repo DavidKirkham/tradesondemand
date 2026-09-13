@@ -91,18 +91,20 @@ model Customer {
 }
 
 model Payment {
-  id          String    @id @default(cuid())
-  publicId    String    @unique
-  bookingId   String
-  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  customerId  String?
-  customer    Customer? @relation(fields: [customerId], references: [id])
-  amountCents Int
-  type        String
-  status      String    @default("PENDING")
-  note        String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  publicId                String    @unique
+  bookingId               String
+  booking                 Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customerId              String?
+  customer                Customer? @relation(fields: [customerId], references: [id])
+  amountCents             Int
+  type                    String
+  status                  String    @default("PENDING")
+  note                    String?
+  stripeCheckoutSessionId String?   @unique
+  stripePaymentIntentId   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   @@index([bookingId])
   @@index([customerId])

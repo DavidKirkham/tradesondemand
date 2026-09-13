@@ -10,7 +10,7 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 - **KC metro only.** Kansas City (MO and KS), Overland Park, Olathe, Independence, Lee’s Summit, Shawnee, Lenexa, Leawood, Blue Springs, Liberty, and nearby ZIPs. Non-metro cities and ZIPs are rejected with a clear message.
 - **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` if needed; the UI works without env setup.
 - **Licensed contractors.** Partners apply at `/contractors/signup`. Ops approves/rejects. Approved shops get a public profile and can be chosen during booking.
-- **Marketplace payments.** Customer → **Trades on Demand** → contractor payout. No pay-the-pro-directly flow, bank fields, or contractor checkout. Stripe is stubbed; `Payment` rows (deposit / balance / adjustment) still exist.
+- **Marketplace payments.** Customer → **Trades on Demand / Trademark Walls** (Stripe Checkout) → contractor payout later. No Connect transfers in Phase 1. No pay-the-pro-directly flow.
 - **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, ops review + TOD ledger. No contractor mobile app. No live Stripe or SMS.
 
 ## Core booking loop
@@ -27,7 +27,24 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 
 Customers pay **Trades on Demand** for deposits, trip minimums, and later job balances. Contractors are paid by TOD (payouts). There is no “pay contractor directly” CTA, and contractor signup does not collect bank details in v1.
 
-`Payment` records belong to TOD (`bookingId`, amount, `DEPOSIT` | `BALANCE` | `ADJUSTMENT`, `PENDING` | `PAID` | `REFUNDED`). Ops can mark paid/refunded. Customer `/account` and job status show receipts, not card numbers. 
+`Payment` records belong to TOD (`bookingId`, amount, `DEPOSIT` | `BALANCE` | `ADJUSTMENT`, `PENDING` | `PAID` | `REFUNDED`, Stripe session/intent ids). The Stripe webhook is the source of truth for paid. Ops can still mark paid/refunded. Customer `/account` and job status show receipts + session id, not card numbers.
+
+## Stripe Checkout (Phase 1)
+
+Platform merchant of record: **Trademark Walls** sandbox (test mode). Do **not** use Stripe Connect `destination` / `transfer_data`.
+
+1. In [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/test/apikeys) copy the test keys.
+2. Set in Cloud Agent secrets or `.env.local` (never commit secrets):
+   - `STRIPE_SECRET_KEY` (`sk_test_…`)
+   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_test_…` — also in `.env.example`)
+   - `STRIPE_WEBHOOK_SECRET` (`whsec_…` from the webhook endpoint or `stripe listen`)
+3. Local webhook forward:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+If keys are missing the app still runs: bookings are created, deposits stay **pending**, and ops shows a configuration message. 
 
 ## Stack
 
@@ -93,20 +110,24 @@ npx prisma db seed
 | `DATABASE_URL_UNPOOLED` | No | Direct Postgres URL for migrations. Defaults to `DATABASE_URL` or Neon `POSTGRES_URL_NON_POOLING`. |
 | `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` | No | Tap-to-call. Hardcoded default is **8165160735** — displays **(816) 516-0735**, links `tel:+18165160735`. Demos work with no env file. |
 | `OPS_PASSWORD` | Yes | Password for `/ops` (default in `.env.example`: `dispatch`) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls test publishable key (safe client-side) |
+| `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
+| `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |
 
 ## Routes
 
 | Path | Who |
 | --- | --- |
 | `/` `/services` `/about` `/contact` `/faqs` | Marketing, KC copy |
-| `/book` | Guided booking wizard |
+| `/book` `/book/success` `/book/retry` | Booking + Stripe Checkout return |
 | `/contractors` | Approved contractor directory |
 | `/contractors/[slug]` | Public profile (approved only; slug, public ID, or id) |
 | `/contractors/signup` `/join` | Licensed contractor application |
 | `/account` `/account/[token]` | Private customer profile (cookie or magic link after first book) |
 | `/status` `/status/[token]` | Customer job status |
 | `/ops` | Jobs, contractor review, customers, TOD payments |
-| `/api/bookings` | Create booking |
+| `/api/bookings` | Create booking + optional Checkout Session |
+| `/api/stripe/webhook` | Stripe signature-verified payment updates |
 | `/api/contractors` | Public list (approved) + signup POST |
 | `/api/status/[token]` | Lookup by job ID or token |
 | `/api/ops/*` | Authenticated jobs + contractor review |

@@ -57,7 +57,9 @@ export type OpsPayment = {
   status: string;
   note: string | null;
   bookingPublicId: string;
+  bookingToken: string;
   customerName: string;
+  stripeCheckoutSessionId: string | null;
   createdAt: string;
 };
 
@@ -67,12 +69,14 @@ export function OpsBoard({
   contractorNames,
   initialCustomers,
   initialPayments,
+  stripeConfigured = false,
 }: {
   initialBookings: OpsBooking[];
   initialContractors: OpsContractor[];
   contractorNames: Record<string, string>;
   initialCustomers: OpsCustomer[];
   initialPayments: OpsPayment[];
+  stripeConfigured?: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"jobs" | "contractors" | "customers" | "payments">("jobs");
@@ -408,9 +412,20 @@ export function OpsBoard({
       ) : (
         <div className="mt-8 space-y-3">
           <p className="text-sm text-muted">
-            Marketplace ledger: customer paid Trades on Demand. Mark refunds here. No contractor
-            card data.
+            Marketplace ledger: customer paid Trades on Demand (Trademark Walls). Mark refunds here.
+            No contractor card data. Webhook is the source of truth for Stripe Checkout.
           </p>
+          {stripeConfigured ? (
+            <p className="rounded-xl bg-ok/10 px-4 py-3 text-sm text-ok">
+              Stripe Checkout is configured (Trademark Walls sandbox).
+            </p>
+          ) : (
+            <p className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-navy">
+              Stripe keys are missing. Set STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, and
+              STRIPE_WEBHOOK_SECRET. The site still runs; deposits stay pending until Checkout is
+              enabled.
+            </p>
+          )}
           {initialPayments.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
               No TOD payments yet.
@@ -424,8 +439,14 @@ export function OpsBoard({
                     {formatUsd(row.amountCents)} · {paymentTypeLabel(row.type)}
                   </p>
                   <p className="text-sm text-muted">
-                    {row.bookingPublicId} · {row.customerName}
+                    <Link href={`/status/${row.bookingToken}`} className="font-semibold text-ember">
+                      {row.bookingPublicId}
+                    </Link>{" "}
+                    · {row.customerName}
                   </p>
+                  {row.stripeCheckoutSessionId ? (
+                    <p className="mt-1 font-mono text-xs text-muted">{row.stripeCheckoutSessionId}</p>
+                  ) : null}
                 </div>
                 <select
                   key={`${row.id}-${row.status}`}

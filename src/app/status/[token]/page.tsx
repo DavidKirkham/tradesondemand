@@ -75,6 +75,11 @@ export default async function StatusDetailPage({
                 <li key={payment.id} className="flex justify-between gap-3">
                   <span>
                     {paymentTypeLabel(payment.type)} · {payment.publicId}
+                    {payment.stripeCheckoutSessionId ? (
+                      <span className="mt-0.5 block font-mono text-[0.7rem] text-muted">
+                        {payment.stripeCheckoutSessionId}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="text-right">
                     {formatUsd(payment.amountCents)}
@@ -86,7 +91,7 @@ export default async function StatusDetailPage({
               ))}
             </ul>
             <p className="mt-2 text-xs text-muted">
-              The contractor never sees your card. TOD pays the partner separately.
+              Processed by Trademark Walls for Trades on Demand. The contractor never sees your card.
             </p>
           </div>
         ) : null}

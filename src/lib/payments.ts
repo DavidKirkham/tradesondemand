@@ -50,28 +50,32 @@ export function depositForBooking(input: {
     tradeRates: TradeRate[];
   } | null;
   trade: string;
-}): { amountCents: number; summary: string } {
+}): { amountCents: number; summary: string; checkoutKind: "deposit" | "minimum" | "balance" } {
   if (input.contractor) {
     const rate = rateForTrade(input.contractor, input.trade);
     if (input.urgency === "emergency" && input.contractor.emergencyRateCents) {
       return {
         amountCents: input.contractor.emergencyRateCents,
         summary: `TOD after-hours hold ${formatUsd(input.contractor.emergencyRateCents)} (credited to the job)`,
+        checkoutKind: "deposit",
       };
     }
     return {
       amountCents: rate.minimumCents,
       summary: `TOD trip minimum ${formatUsd(rate.minimumCents)} at ${formatUsd(rate.hourlyCents)}/hr`,
+      checkoutKind: "minimum",
     };
   }
   if (input.urgency === "emergency") {
     return {
       amountCents: 14900,
       summary: "TOD emergency dispatch hold $149.00 (credited to the job)",
+      checkoutKind: "deposit",
     };
   }
   return {
     amountCents: 0,
     summary: "No TOD trip deposit to schedule — you still pay Trades on Demand, not the contractor, when work is approved",
+    checkoutKind: "deposit",
   };
 }
