@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   customerFacingInvoiceLines,
   customerFacingInvoiceTotals,
@@ -28,12 +29,14 @@ export function InvoiceBreakdown({
   markupCents,
   depositPaidCents,
   amountDueCents,
+  amountDue,
   note,
   variant = "customer",
 }: InvoiceMoneyFields & {
   publicId?: string | null;
   status: string;
   lines: InvoiceBreakdownLine[];
+  amountDue?: ReactNode;
   note?: string | null;
   variant?: "customer" | "contractor" | "admin";
 }) {
@@ -116,7 +119,7 @@ export function InvoiceBreakdown({
         ) : null}
         <div className="flex justify-between gap-3 pt-1 font-semibold">
           <dt>{variant === "customer" ? "Owed to TOD" : "Customer owes TOD"}</dt>
-          <dd>{formatUsd(amountDueCents)}</dd>
+          <dd>{amountDue ?? formatUsd(amountDueCents)}</dd>
         </div>
       </dl>
 

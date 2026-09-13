@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AdminAssignContractor } from "./AdminAssignContractor";
 import type { AdminContractorOption } from "@/lib/admin-assign";
 import { statusLabel } from "@/lib/booking";
+import { invoiceStatusLabel } from "@/lib/invoice";
+import { formatUsd } from "@/lib/money";
 import { getTrade } from "@/lib/trades";
 
 export function AdminJobAssignCard({
@@ -17,6 +19,7 @@ export function AdminJobAssignCard({
   contractorId,
   contractorName,
   contractors,
+  invoice,
 }: {
   id: string;
   publicId: string;
@@ -30,6 +33,7 @@ export function AdminJobAssignCard({
   contractorId: string | null;
   contractorName: string | null;
   contractors: AdminContractorOption[];
+  invoice?: { status: string; amountDueCents: number } | null;
 }) {
   return (
     <article className="rounded-2xl border border-line bg-paper p-4 shadow-sm">
@@ -47,6 +51,17 @@ export function AdminJobAssignCard({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
+          {invoice ? (
+            <Link
+              href={`/admin/jobs/${id}#invoice`}
+              className="text-sm font-semibold text-ember hover:underline"
+            >
+              {formatUsd(invoice.amountDueCents)}
+              <span className="mt-0.5 block text-xs font-normal text-muted">
+                {invoiceStatusLabel(invoice.status)} · customer
+              </span>
+            </Link>
+          ) : null}
           <Link href={`/admin/jobs/${id}`} className="text-sm font-semibold text-ember">
             Job detail
           </Link>
