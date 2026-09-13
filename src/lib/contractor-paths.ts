@@ -28,3 +28,9 @@ export function isPublicContractorPath(pathname: string): boolean {
   if (pathname === "/contractor/manifest.webmanifest") return true;
   return false;
 }
+
+/** Deep link opened from a booked-job push (or SMS). Uses the booking cuid, not publicId. */
+export function contractorJobPath(bookingId: string): string {
+  const id = bookingId.trim();
+  return id ? `/contractor/jobs/${id}` : "/contractor";
+}

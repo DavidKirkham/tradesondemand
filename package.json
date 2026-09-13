@@ -12,7 +12,8 @@
     "db:generate": "node scripts/with-db-env.cjs generate",
     "db:migrate": "node scripts/with-db-env.cjs migrate deploy",
     "db:push": "node scripts/with-db-env.cjs db push",
-    "db:seed": "node scripts/with-db-env.cjs db seed"
+    "db:seed": "node scripts/with-db-env.cjs db seed",
+    "vapid:keys": "node scripts/generate-vapid-keys.cjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -23,7 +24,8 @@
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "stripe": "^22.6.2"
+    "stripe": "^22.6.2",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -31,6 +33,7 @@
     "@types/node": "^22.20.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "prisma": "^6.19.3",

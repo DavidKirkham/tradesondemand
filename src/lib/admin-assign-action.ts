@@ -5,6 +5,7 @@ import {
   nextStatusOnAdminAssign,
 } from "./admin-assign";
 import { BOOKING_SMS_OMIT } from "./booking-sms-columns";
+import { notifyContractorBookedSafe } from "./notify-contractor-booked";
 import { prisma } from "./prisma";
 
 export async function assignBookingToApprovedContractor(bookingId: string, contractorId: string) {
@@ -48,6 +49,18 @@ export async function assignBookingToApprovedContractor(bookingId: string, contr
     },
     include: { contractor: true },
     omit: BOOKING_SMS_OMIT,
+  });
+
+  await notifyContractorBookedSafe({
+    contractorId: contractor.id,
+    contractorPhone: contractor.phone,
+    job: {
+      id: updated.id,
+      publicId: updated.publicId,
+      trade: updated.trade,
+      urgency: updated.urgency,
+      city: updated.city,
+    },
   });
 
   return {

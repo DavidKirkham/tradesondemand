@@ -5,7 +5,8 @@ import { createCustomerToken, createPaymentPublicId } from "@/lib/customer";
 import { customerCookieOptions, issueCustomerSession } from "@/lib/customer-auth";
 import { depositForBooking } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
-import { isStripeCheckoutConfigured, logStripeMissingKeys } from "@/lib/stripe";
+import { appOriginFromRequest, isStripeCheckoutConfigured, logStripeMissingKeys } from "@/lib/stripe";
+import { notifyContractorBookedSafe } from "@/lib/notify-contractor-booked";
 import { createPlatformCheckoutSession } from "@/lib/stripe-checkout";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
   }
 
   let contractorId: string | null = null;
+  let contractorPhone: string | null = null;
   let contractorForDeposit: Parameters<typeof depositForBooking>[0]["contractor"] = null;
   if (parsed.data.matchPreference === "SPECIFIC" && parsed.data.contractorId) {
     const contractor = await prisma.contractor.findUnique({
@@ -56,6 +58,7 @@ export async function POST(request: Request) {
       );
     }
     contractorId = contractor.id;
+    contractorPhone = contractor.phone;
     contractorForDeposit = {
       hourlyRateCents: contractor.hourlyRateCents,
       minimumChargeCents: contractor.minimumChargeCents,
@@ -124,6 +127,21 @@ export async function POST(request: Request) {
     },
     include: { payments: true },
   });
+
+  if (contractorId) {
+    await notifyContractorBookedSafe({
+      contractorId,
+      contractorPhone,
+      job: {
+        id: booking.id,
+        publicId: booking.publicId,
+        trade: booking.trade,
+        urgency: booking.urgency,
+        city: booking.city,
+      },
+      origin: appOriginFromRequest(request),
+    });
+  }
 
   const payment = booking.payments[0];
   let checkoutUrl: string | null = null;

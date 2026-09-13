@@ -104,6 +104,7 @@ Prisma expects these folders, in order:
 | `prisma/migrations/20260913200000_contractor_password` | `Contractor.passwordHash`, `Contractor.sessionToken` (nullable unique) |
 | `prisma/migrations/20260913220000_contractor_password_reset` | `ContractorPasswordReset` (SMS forgot-password token + code hashes) |
 | `prisma/migrations/20260913230000_customer_password` | `Customer.passwordHash`, `Customer.sessionToken`, SMS reset code columns |
+| `prisma/migrations/20260913240000_contractor_push_subscription` | `ContractorPushSubscription` (Web Push endpoints per approved shop) |
 
 Exact production command (`prisma migrate deploy` via the env wrapper):
 
@@ -174,7 +175,8 @@ Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variabl
 3. Pick an **approved** shop licensed for that job’s trade → **Assign**. Reassignment shows an in-page confirm.
 4. Or open `/admin/contractors/<id>` and use **Push a job to this shop**.
 5. The booking gets `contractorId`, status **Dispatched** if it was still Received, and a StatusEvent like `Assigned by admin to Waldo Heat & Pipe`.
-6. That shop signs in at `/contractor` (email / phone / shop ID **and password**) and sees the ticket under **Assigned**.
+6. That shop is notified: Web Push if they enabled job push on the PWA, otherwise an SMS to the shop phone when Twilio is configured. Opening the notification lands on `/contractor/jobs/<booking id>`.
+7. That shop signs in at `/contractor` (email / phone / shop ID **and password**) and sees the ticket under **Assigned**.
 
 Pending / rejected shops never appear in the picker. Cancelled jobs cannot be assigned.
 
@@ -233,13 +235,14 @@ A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
 5. **Past** — completed `TOD-DONE01` and cancelled `TOD-CXL01`.  
 6. **SMS** — text only on jobs you own; 555 numbers skip; missing Twilio still saves the note.  
 7. **Pay** — per-job pending/paid/refunded from `Payment` rows + history. Copy states payouts are via TOD.  
-8. **Profile** — edit contact, coverage, rates, bio → Save. Change password with the current password.
+8. **Profile** — edit contact, coverage, rates, bio → Save. Change password with the current password.  
+9. **Job push** — on Profile tap **Enable job push** (or the header link). Assign `TOD-OPEN01` to Waldo from `/admin` (or book that shop). A push should fire if VAPID keys are set; otherwise Twilio texts the shop phone when configured. Tap the notification → `/contractor/jobs/<id>`.
 
 Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancelled), **SMS** (text customers on jobs you own), job detail (**Accept**, En route / On site / Done, arrival text), **Profile** (business contact, coverage, rates, bio), and **Pay** (per-job TOD payment status + Payment history). Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site. Payouts are via TOD; the Pay page does not invent Stripe Connect.
 
 **Matching:** an unassigned, not-complete/cancelled booking is available when the shop is **APPROVED**, their `tradesJson` includes the job trade, and `serviceArea` covers the job city or ZIP (case-insensitive substring). Writing **metro** (e.g. “Kansas City metro”) also matches any KC metro city/ZIP from `src/lib/kc-metro.ts`. A city-only list (e.g. “Olathe and 66061”) does not see Independence.
 
-**In-app notify (v1):** while signed in, `/contractor` polls `GET /api/contractor/jobs` every 20s, badges the available count, refreshes the list, and can fire a browser `Notification` if the shop taps **Alert me in this browser**. Full Web Push (service-worker push when the PWA is closed) is not in v1.
+**Booked-job push:** when admin assigns a shop or a customer books a specific approved contractor, the server sends a Web Push to that shop’s stored subscriptions (`ContractorPushSubscription`). The service worker opens `/contractor/jobs/<booking id>`. If the shop has no subscription (or all endpoints are gone), Twilio texts the application phone — same credentials as customer ETA SMS. Contractor self-accept from the available list does not re-notify (they just tapped Accept). Enable push from the contractor header (**Enable job push**) or **Profile**. iPhone needs the PWA on the Home Screen. Requires VAPID keys (see Environment variables). The available-jobs poll every 20s is unchanged.
 
 **Client SMS (optional Twilio):** set `TWILIO_ACCOUNT_SID` (Account SID `AC…`, used only in the Messages URL), `TWILIO_FROM_NUMBER`, and either `TWILIO_API_KEY_SID` (`SK…`) + `TWILIO_API_KEY_SECRET` **or** `TWILIO_AUTH_TOKEN`. If they are missing, Accept still works; the ETA is saved and `/admin/jobs/<id>` shows SMS skipped. The same credentials send contractor **forgot-password** texts to the shop phone. Secrets are never logged. Do not put an API Key SID in `TWILIO_ACCOUNT_SID` — that breaks the `/Accounts/{sid}/Messages.json` path.
 
@@ -259,6 +262,7 @@ npx prisma db seed
 | `npm start`          | Serve the production build                    |
 | `npm test`           | Vitest                                        |
 | `npm run lint`       | ESLint                                        |
+| `npm run vapid:keys` | Print VAPID public/private keys for contractor Web Push |
 
 ## Environment variables
 
@@ -277,6 +281,9 @@ npx prisma db seed
 | `TWILIO_API_KEY_SID` / `TWILIO_API_KEY_SECRET` | For SMS (preferred) | API Key SID (`SK…`) + secret for Basic auth. When both are set they are used instead of the Auth Token. |
 | `TWILIO_AUTH_TOKEN` | For SMS (fallback) | Account Auth Token. Used for Basic auth when API key SID+secret are not both set. |
 | `TWILIO_FROM_NUMBER` | For SMS | Twilio sender number. Empty Twilio creds = skip send (accept still works; self-serve reset will not deliver a text — use Admin backup). |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | For contractor Web Push | Generate with `npm run vapid:keys`. Empty = subscribe stays off; assign/booking still works. SMS fallback uses Twilio + shop phone when no push subscription is stored. |
+| `VAPID_SUBJECT` | No | `mailto:` or `https:` contact in the VAPID JWT. Default `https://www.tradesondemand.com`. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | No | Optional alias for the public key. The authenticated `GET /api/contractor/push` also returns `VAPID_PUBLIC_KEY`. |
 
 ## Routes
 
@@ -299,6 +306,7 @@ npx prisma db seed
 | `/api/status/[token]` | Lookup by job ID or token |
 | `/api/account/*` | Customer portal session (`tod_customer_session`, distinct from contractor/admin) |
 | `/api/contractor/*` | Approved-contractor session (separate cookie from admin/customers) |
+| `/api/contractor/push` | Get VAPID public key + save/delete this shop’s Web Push subscription |
 | `/api/admin/*` | Authenticated admin login + client/contractor/job edits |
 | `/api/ops/*` | Same cookie auth; older ops endpoints still work |
 
