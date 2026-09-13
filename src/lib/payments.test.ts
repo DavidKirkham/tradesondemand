@@ -24,14 +24,15 @@ describe("depositForBooking", () => {
         tradeRates: [{ slug: "plumbing", hourlyCents: 9500, minimumCents: 14900 }],
       },
     });
-    expect(result.amountCents).toBe(17500);
+    expect(result.amountCents).toBe(21000);
     expect(result.summary).toMatch(/TOD/);
+    expect(result.summary).toContain("$210.00");
   });
 
   it("uses first-available emergency hold", () => {
     vi.stubEnv("SMOKE_DEPOSIT_CENTS", "");
     vi.stubEnv("NEXT_PUBLIC_SMOKE_DEPOSIT_CENTS", "");
-    expect(depositForBooking({ urgency: "emergency", trade: "plumbing" }).amountCents).toBe(14900);
+    expect(depositForBooking({ urgency: "emergency", trade: "plumbing" }).amountCents).toBe(17880);
   });
 
   it("summarizes contractor-facing TOD payment status", () => {
@@ -89,7 +90,9 @@ describe("depositForBooking", () => {
         tradeRates: [{ slug: "hvac", hourlyCents: 11000, minimumCents: 18900 }],
       },
     });
-    expect(result.amountCents).toBe(18900);
+    expect(result.amountCents).toBe(22680);
     expect(result.summary).toMatch(/TOD trip minimum/);
+    expect(result.summary).toContain("$226.80");
+    expect(result.summary).toContain("$132.00/hr");
   });
 });

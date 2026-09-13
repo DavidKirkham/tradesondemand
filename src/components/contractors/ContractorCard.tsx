@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { rateForTrade, type PublicContractor } from "@/lib/contractor";
-import { formatUsd } from "@/lib/money";
+import { formatCustomerUsd } from "@/lib/pricing";
 import { getTrade } from "@/lib/trades";
 import { ContractorAvatar } from "./ContractorAvatar";
 
@@ -28,9 +28,10 @@ export function ContractorCard({
         </div>
         <p className="mt-1 text-sm text-muted">{names}</p>
         <p className="mt-2 text-sm text-navy">
-          {formatUsd(rate.hourlyCents)}/hr · {formatUsd(rate.minimumCents)} min
-          {contractor.emergencyRateCents ? ` · after-hours ${formatUsd(contractor.emergencyRateCents)}` : ""}
+          {formatCustomerUsd(rate.hourlyCents)}/hr · {formatCustomerUsd(rate.minimumCents)} min
+          {contractor.emergencyRateCents ? ` · after-hours ${formatCustomerUsd(contractor.emergencyRateCents)}` : ""}
         </p>
+        <p className="mt-0.5 text-xs text-muted">Customer price includes the TOD platform fee</p>
         <p className="mt-1 line-clamp-2 text-sm text-muted">{contractor.serviceArea}</p>
         <Link href={`/contractors/${contractor.slug}`} className="mt-3 inline-block text-sm font-semibold text-ember">
           View profile

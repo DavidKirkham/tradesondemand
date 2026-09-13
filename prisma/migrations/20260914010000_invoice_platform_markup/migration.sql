@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Invoice" ADD COLUMN "customerSubtotalCents" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Invoice" ADD COLUMN "markupCents" INTEGER NOT NULL DEFAULT 0;

@@ -4,7 +4,7 @@ import { AdminSearch } from "@/components/admin/AdminSearch";
 import { searchNeedle } from "@/lib/admin";
 import { contractorStatusLabel, parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
-import { formatUsd } from "@/lib/money";
+import { formatShopAndCustomerUsd } from "@/lib/pricing";
 import { prisma } from "@/lib/prisma";
 import { getTrade, isKnownTrade, TRADES } from "@/lib/trades";
 
@@ -157,7 +157,7 @@ async function ContractorsList({
                     <td className="px-4 py-3 text-muted">
                       {trades.map((slug) => getTrade(slug)?.name ?? slug).join(", ") || "—"}
                     </td>
-                    <td className="px-4 py-3">{formatUsd(row.hourlyRateCents)}/hr</td>
+                    <td className="px-4 py-3">{formatShopAndCustomerUsd(row.hourlyRateCents)}/hr</td>
                     <td className="px-4 py-3">{row._count.bookings}</td>
                     <td className="px-4 py-3">
                       <Link

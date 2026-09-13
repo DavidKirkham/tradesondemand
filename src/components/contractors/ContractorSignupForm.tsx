@@ -216,9 +216,9 @@ export function ContractorSignupForm() {
       <section className="space-y-4">
         <h2 className="font-display text-xl text-navy">Rates &amp; minimums (USD)</h2>
         <p className="text-sm text-muted">
-          Enter a primary hourly rate and a trip / service-call minimum. If you cover more than one
-          trade, you can override those numbers per trade. After-hours is optional. Customers pay
-          Trades on Demand — these are the amounts TOD quotes from.
+          Enter a primary hourly rate and a trip / service-call minimum — what your shop earns. If
+          you cover more than one trade, you can override those numbers per trade. After-hours is
+          optional. Customers pay Trades on Demand at these amounts plus a 20% TOD platform fee.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field

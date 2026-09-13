@@ -48,7 +48,7 @@ async function main() {
         customerPhone: customer.phone,
         customerEmail: customer.email,
         customerId: customer.id,
-        quoteSummary: "Emergency hvac dispatch · $89–$149 dispatch hold",
+        quoteSummary: "Emergency hvac dispatch · $106.80–$178.80 dispatch hold",
         events: {
           create: { status: "RECEIVED", note: "Seeded demo ticket" },
         },
@@ -157,7 +157,7 @@ async function main() {
         publicId: "PAY-DEMO01",
         bookingId: demo.id,
         customerId: customer.id,
-        amountCents: 17500,
+        amountCents: 21000,
         type: "DEPOSIT",
         status: "PENDING",
         note: "Seeded emergency hold — pending with TOD",
@@ -185,7 +185,7 @@ async function main() {
         contractorId: contractor.id,
         matchPreference: "SPECIFIC",
         status: "COMPLETED",
-        quoteSummary: "TOD trip minimum $189.00",
+        quoteSummary: "TOD trip minimum $226.80",
         events: {
           create: [
             { status: "RECEIVED", note: "Seeded completed ticket" },
@@ -196,10 +196,10 @@ async function main() {
           create: {
             publicId: "PAY-DONE01",
             customerId: customer.id,
-            amountCents: 18900,
+            amountCents: 22680,
             type: "DEPOSIT",
             status: "PAID",
-            note: "Seeded TOD trip minimum (paid)",
+            note: "Seeded TOD trip minimum (paid, includes 20% TOD markup)",
           },
         },
       },
@@ -219,10 +219,10 @@ async function main() {
         publicId: "PAY-DONEBAL",
         bookingId: doneJob.id,
         customerId: customer.id,
-        amountCents: 17500,
+        amountCents: 21000,
         type: "BALANCE",
         status: "PENDING",
-        note: "Time & materials invoice INV-DONE01. Deposit already paid $189.00 credited against $364.00. You pay Trades on Demand (Trademark Walls), not the contractor.",
+        note: "Time & materials invoice INV-DONE01. Deposit already paid $226.80 credited against $436.80. You pay Trades on Demand (Trademark Walls), not the contractor.",
       },
     });
     await prisma.invoice.create({
@@ -237,8 +237,10 @@ async function main() {
         laborCents: 16500,
         materialsCents: 19900,
         subtotalCents: 36400,
-        depositPaidCents: 18900,
-        amountDueCents: 17500,
+        customerSubtotalCents: 43680,
+        markupCents: 7280,
+        depositPaidCents: 22680,
+        amountDueCents: 21000,
         note: "Replaced blower motor. Deposit credited.",
         sentAt: new Date(),
         lines: {
@@ -291,7 +293,7 @@ async function main() {
           create: {
             publicId: "PAY-CLAIM01",
             customerId: claimCustomer.id,
-            amountCents: 14900,
+            amountCents: 17880,
             type: "DEPOSIT",
             status: "PENDING",
             note: "Seeded trip hold — pending with TOD",
@@ -332,7 +334,7 @@ async function main() {
           create: {
             publicId: "PAY-CXL01",
             customerId: customer.id,
-            amountCents: 14900,
+            amountCents: 17880,
             type: "DEPOSIT",
             status: "REFUNDED",
             note: "Seeded deposit refunded by TOD",

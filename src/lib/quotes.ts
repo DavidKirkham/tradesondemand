@@ -1,3 +1,9 @@
+import { formatUsd } from "./money";
+import {
+  applyPlatformMarkupCents,
+  FIRST_AVAILABLE_EMERGENCY_HOLD_CENTS,
+  FIRST_AVAILABLE_EMERGENCY_HOLD_LOW_CENTS,
+} from "./pricing";
 import { getTrade } from "./trades";
 
 export type Urgency = "emergency" | "routine";
@@ -19,7 +25,7 @@ export function getQuotePreview(tradeSlug: string, urgency: Urgency): QuotePrevi
     return {
       urgency,
       headline: `Emergency ${tradeName.toLowerCase()} dispatch`,
-      holdLabel: "$89–$149 dispatch hold",
+      holdLabel: `${formatUsd(applyPlatformMarkupCents(FIRST_AVAILABLE_EMERGENCY_HOLD_LOW_CENTS))}–${formatUsd(applyPlatformMarkupCents(FIRST_AVAILABLE_EMERGENCY_HOLD_CENTS))} dispatch hold`,
       holdDetail:
         "You pay Trades on Demand — never the contractor. A TOD dispatch hold is reserved (stubbed in v1) and credited to the job. After on-site diagnosis you approve the remaining work before it starts.",
       nextStep:

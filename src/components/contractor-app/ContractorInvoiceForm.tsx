@@ -37,6 +37,8 @@ export function ContractorInvoiceForm({
     laborCents: number;
     materialsCents: number;
     subtotalCents: number;
+    customerSubtotalCents?: number;
+    markupCents?: number;
     depositPaidCents: number;
     amountDueCents: number;
     lines: InvoiceLineDraft[];
@@ -112,9 +114,12 @@ export function ContractorInvoiceForm({
             laborCents={invoice.laborCents}
             materialsCents={invoice.materialsCents}
             subtotalCents={invoice.subtotalCents}
+            customerSubtotalCents={invoice.customerSubtotalCents}
+            markupCents={invoice.markupCents}
             depositPaidCents={invoice.depositPaidCents}
             amountDueCents={invoice.amountDueCents}
             note={invoice.note}
+            variant="contractor"
           />
         </div>
       </section>
@@ -127,8 +132,9 @@ export function ContractorInvoiceForm({
         Time & materials invoice
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Bill hours at your shop rate plus parts. The customer pays Trades on Demand — never you
-        directly. Paid deposits are credited before the balance.
+        Bill hours at your shop rate plus parts — enter what you earn, not the customer price.
+        TOD adds a 20% platform fee when the customer pays. Paid deposits are credited before
+        the balance.
       </p>
       {depositPaidCents > 0 ? (
         <p className="mt-2 text-sm text-navy">
@@ -233,8 +239,11 @@ export function ContractorInvoiceForm({
           laborCents={preview.totals.laborCents}
           materialsCents={preview.totals.materialsCents}
           subtotalCents={preview.totals.subtotalCents}
+          customerSubtotalCents={preview.totals.customerSubtotalCents}
+          markupCents={preview.totals.markupCents}
           depositPaidCents={preview.totals.depositPaidCents}
           amountDueCents={preview.totals.amountDueCents}
+          variant="contractor"
         />
       </div>
 

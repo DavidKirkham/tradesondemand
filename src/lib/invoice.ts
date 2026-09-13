@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { formatUsd, parseUsdToCents } from "./money";
+import { applyPlatformMarkupCents, platformMarkupCents } from "./pricing";
 
 export const INVOICE_STATUSES = ["DRAFT", "SENT", "PAID"] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
@@ -36,6 +37,18 @@ export type InvoiceTotals = {
   laborCents: number;
   materialsCents: number;
   subtotalCents: number;
+  customerSubtotalCents: number;
+  markupCents: number;
+  depositPaidCents: number;
+  amountDueCents: number;
+};
+
+export type InvoiceMoneyFields = {
+  laborCents: number;
+  materialsCents: number;
+  subtotalCents: number;
+  customerSubtotalCents?: number | null;
+  markupCents?: number | null;
   depositPaidCents: number;
   amountDueCents: number;
 };
@@ -125,14 +138,80 @@ export function totalsFromLines(
     }
   }
   const subtotalCents = laborCents + materialsCents;
+  const customerSubtotalCents = applyPlatformMarkupCents(subtotalCents);
+  const markupCents = platformMarkupCents(subtotalCents);
   return {
     laborHours,
     laborRateCents,
     laborCents,
     materialsCents,
     subtotalCents,
+    customerSubtotalCents,
+    markupCents,
     depositPaidCents,
-    amountDueCents: Math.max(0, subtotalCents - depositPaidCents),
+    amountDueCents: Math.max(0, customerSubtotalCents - depositPaidCents),
+  };
+}
+
+export function invoiceHasStoredMarkup(invoice: Pick<InvoiceMoneyFields, "customerSubtotalCents">): boolean {
+  return (invoice.customerSubtotalCents ?? 0) > 0;
+}
+
+export function customerFacingInvoiceLines<T extends { unitCents: number; amountCents: number }>(
+  lines: T[],
+  applyMarkup: boolean,
+): T[] {
+  if (!applyMarkup) return lines;
+  return lines.map((line) => ({
+    ...line,
+    unitCents: applyPlatformMarkupCents(line.unitCents),
+    amountCents: applyPlatformMarkupCents(line.amountCents),
+  }));
+}
+
+export function customerFacingInvoiceTotals(invoice: InvoiceMoneyFields): {
+  laborCents: number;
+  materialsCents: number;
+  subtotalCents: number;
+  markupCents: number;
+  depositPaidCents: number;
+  amountDueCents: number;
+} {
+  if (!invoiceHasStoredMarkup(invoice)) {
+    return {
+      laborCents: invoice.laborCents,
+      materialsCents: invoice.materialsCents,
+      subtotalCents: invoice.subtotalCents,
+      markupCents: invoice.markupCents ?? 0,
+      depositPaidCents: invoice.depositPaidCents,
+      amountDueCents: invoice.amountDueCents,
+    };
+  }
+  return {
+    laborCents: applyPlatformMarkupCents(invoice.laborCents),
+    materialsCents: applyPlatformMarkupCents(invoice.materialsCents),
+    subtotalCents: invoice.customerSubtotalCents ?? applyPlatformMarkupCents(invoice.subtotalCents),
+    markupCents: invoice.markupCents ?? platformMarkupCents(invoice.subtotalCents),
+    depositPaidCents: invoice.depositPaidCents,
+    amountDueCents: invoice.amountDueCents,
+  };
+}
+
+export function persistableInvoiceMoney(totals: InvoiceTotals, omitMarkupColumns = false) {
+  const money = {
+    laborHours: totals.laborHours,
+    laborRateCents: totals.laborRateCents,
+    laborCents: totals.laborCents,
+    materialsCents: totals.materialsCents,
+    subtotalCents: totals.subtotalCents,
+    depositPaidCents: totals.depositPaidCents,
+    amountDueCents: totals.amountDueCents,
+  };
+  if (omitMarkupColumns) return money;
+  return {
+    ...money,
+    customerSubtotalCents: totals.customerSubtotalCents,
+    markupCents: totals.markupCents,
   };
 }
 
@@ -230,10 +309,12 @@ export function invoicePaymentNote(input: {
   publicId: string;
   depositPaidCents: number;
   subtotalCents: number;
+  customerSubtotalCents?: number;
 }): string {
+  const billedCents = input.customerSubtotalCents ?? input.subtotalCents;
   const credit =
     input.depositPaidCents > 0
-      ? ` Deposit already paid ${formatUsd(input.depositPaidCents)} credited against ${formatUsd(input.subtotalCents)}.`
+      ? ` Deposit already paid ${formatUsd(input.depositPaidCents)} credited against ${formatUsd(billedCents)}.`
       : "";
   return `Time & materials invoice ${input.publicId}.${credit} You pay Trades on Demand (Trademark Walls), not the contractor.`;
 }
