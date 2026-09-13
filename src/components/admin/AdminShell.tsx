@@ -35,6 +35,12 @@ export function AdminShell({ children }: { children: import("react").ReactNode }
         <p className="mt-1 font-display text-xl text-navy">Admin</p>
         <p className="mt-1 text-xs text-muted">Private. Not a public directory.</p>
         <nav className="mt-4 flex flex-row flex-wrap gap-2 lg:flex-col">
+          <Link
+            href="/"
+            className="rounded-full border border-line px-3 py-2 text-sm font-semibold text-navy"
+          >
+            Home
+          </Link>
           {LINKS.map((link) => (
             <Link
               key={link.href}

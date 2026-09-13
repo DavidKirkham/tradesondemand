@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { ContractorAuthLayout } from "@/components/contractor-app/ContractorAuthLayout";
 
 export function ContractorResetPassword({ token }: { token: string }) {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function ContractorResetPassword({ token }: { token: string }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
+    <ContractorAuthLayout>
       <p className="stamp text-xs text-ember">Partner app</p>
       <h1 className="mt-2 font-display text-3xl text-navy">Choose a new password</h1>
       <p className="mt-3 text-sm text-muted">
@@ -77,6 +78,6 @@ export function ContractorResetPassword({ token }: { token: string }) {
           Request a new text
         </Link>
       </p>
-    </div>
+    </ContractorAuthLayout>
   );
 }

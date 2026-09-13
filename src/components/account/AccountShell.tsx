@@ -45,7 +45,13 @@ export function AccountShell({
           {signingOut ? "Signing out…" : "Sign out"}
         </button>
       </div>
-      <nav className="mt-5 flex gap-2">
+      <nav className="mt-5 flex flex-wrap gap-2">
+        <Link
+          href="/"
+          className="inline-flex h-10 items-center rounded-full border border-line bg-paper px-4 text-sm font-semibold text-navy"
+        >
+          Home
+        </Link>
         {NAV.map((item) => {
           const active = item.match(pathname);
           return (

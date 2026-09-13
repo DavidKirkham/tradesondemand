@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
+import { ContractorAuthLayout } from "@/components/contractor-app/ContractorAuthLayout";
 import { isSafeContractorNextPath } from "@/lib/contractor-paths";
 
 type Mode = "signin" | "setup" | "first";
@@ -69,7 +70,7 @@ export function ContractorLogin({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
+    <ContractorAuthLayout>
       <p className="stamp text-xs text-ember">Partner app</p>
       <h1 className="mt-2 font-display text-3xl text-navy">
         {mode === "signin" ? "Contractor sign in" : "Set a password"}
@@ -188,6 +189,6 @@ export function ContractorLogin({
           </Link>
         </p>
       </div>
-    </div>
+    </ContractorAuthLayout>
   );
 }

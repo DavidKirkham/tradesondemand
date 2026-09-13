@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { AvailableJobsWatcher } from "@/components/contractor-app/AvailableJobsWatcher";
+import { HomeBrandLink } from "@/components/HomeBrandLink";
 
 const NAV = [
   { href: "/contractor", label: "Jobs", match: (path: string) => path === "/contractor" || path.startsWith("/contractor/jobs") },
@@ -38,8 +39,8 @@ export function ContractorAppShell({
       <header className="sticky top-0 z-20 border-b border-line bg-navy px-4 py-3 text-cream">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="stamp text-[0.65rem] text-gold">TOD contractor</p>
-            <p className="font-display text-lg leading-tight">{businessName}</p>
+            <HomeBrandLink compact light />
+            <p className="mt-1 font-display text-lg leading-tight">{businessName}</p>
           </div>
           <button
             type="button"

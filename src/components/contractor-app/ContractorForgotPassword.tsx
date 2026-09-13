@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { ContractorAuthLayout } from "@/components/contractor-app/ContractorAuthLayout";
 
 type Step = "request" | "confirm";
 
@@ -56,7 +57,7 @@ export function ContractorForgotPassword() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
+    <ContractorAuthLayout>
       <p className="stamp text-xs text-ember">Partner app</p>
       <h1 className="mt-2 font-display text-3xl text-navy">Reset password</h1>
       <p className="mt-3 text-sm text-muted">
@@ -141,6 +142,6 @@ export function ContractorForgotPassword() {
         </p>
         <p>Or tap the reset link in the text if this device is not the shop phone.</p>
       </div>
-    </div>
+    </ContractorAuthLayout>
   );
 }
