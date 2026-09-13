@@ -9,12 +9,10 @@ const NAV = [
   { href: "/services", label: "Services" },
   { href: "/book", label: "Book" },
   { href: "/contractors", label: "Contractors" },
-  { href: "/status", label: "Track a job" },
   { href: "/account", label: "My jobs" },
   { href: "/about", label: "About" },
   { href: "/faqs", label: "FAQs" },
   { href: "/contact", label: "Contact" },
-  { href: "/admin", label: "Admin" },
 ];
 
 export function SiteHeader() {
