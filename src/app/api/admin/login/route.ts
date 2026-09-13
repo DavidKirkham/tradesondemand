@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   if (!passwordMatches(password)) {
-    return NextResponse.json({ error: "Invalid password." }, { status: 401 });
+    return NextResponse.json({ error: "Sign-in failed." }, { status: 401 });
   }
 
   const cookie = opsCookieOptions();
