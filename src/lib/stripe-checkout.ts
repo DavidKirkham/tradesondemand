@@ -1,5 +1,10 @@
 import type Stripe from "stripe";
-import { appOriginFromRequest, getStripe } from "./stripe";
+import {
+  appOriginFromRequest,
+  getStripe,
+  logStripeMissingKeys,
+  STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE,
+} from "./stripe";
 
 export type CheckoutKind = "deposit" | "minimum" | "balance";
 
@@ -35,7 +40,8 @@ export async function createPlatformCheckoutSession(input: {
 }): Promise<{ url: string; sessionId: string } | { error: string }> {
   const stripe = getStripe();
   if (!stripe) {
-    return { error: "Stripe Checkout is not configured." };
+    logStripeMissingKeys("createPlatformCheckoutSession");
+    return { error: STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE };
   }
   if (input.amountCents <= 0) {
     return { error: "No amount to charge." };

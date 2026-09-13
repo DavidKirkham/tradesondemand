@@ -29,8 +29,17 @@ export function isStripeCheckoutConfigured(): boolean {
   return Boolean(getStripeSecretKey());
 }
 
+/** Ops / server log only — never return this string to public customers. */
 export function stripeMissingKeysMessage(): string {
   return "Stripe Checkout is not configured. Set STRIPE_SECRET_KEY in Cloud Agent secrets or .env.local (Trademark Walls sandbox — Stripe Dashboard → Developers → API keys). Booking still works; the TOD deposit stays pending until Checkout is enabled.";
+}
+
+/** Shown when Checkout cannot start. Does not mention keys, env, or pending deposits. */
+export const STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE =
+  "Checkout is temporarily unavailable. Try again shortly or call dispatch.";
+
+export function logStripeMissingKeys(context: string) {
+  console.warn(`[stripe] ${context}: ${stripeMissingKeysMessage()}`);
 }
 
 let cached: Stripe | null | undefined;

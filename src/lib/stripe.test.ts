@@ -5,6 +5,7 @@ import {
   getStripePublishableKey,
   isStripeCheckoutConfigured,
   resetStripeClientForTests,
+  STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE,
   stripeMissingKeysMessage,
 } from "./stripe";
 
@@ -19,6 +20,11 @@ describe("stripe env helpers", () => {
     expect(isStripeCheckoutConfigured()).toBe(false);
     expect(getStripe()).toBeNull();
     expect(stripeMissingKeysMessage()).toMatch(/Cloud Agent secrets or \.env\.local/);
+  });
+
+  it("keeps missing-keys copy off the customer Checkout message", () => {
+    expect(STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE).not.toMatch(/keys|STRIPE_|pending|env/i);
+    expect(stripeMissingKeysMessage()).toMatch(/keys|STRIPE_|pending/i);
   });
 
   it("defaults to the Trademark Walls publishable test key", () => {

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createPlatformCheckoutSession } from "@/lib/stripe-checkout";
-import { isStripeCheckoutConfigured, stripeMissingKeysMessage } from "@/lib/stripe";
+import {
+  isStripeCheckoutConfigured,
+  logStripeMissingKeys,
+  STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE,
+} from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +28,11 @@ export async function POST(
   }
 
   if (!isStripeCheckoutConfigured()) {
-    return NextResponse.json({ error: stripeMissingKeysMessage(), stripeConfigured: false }, { status: 503 });
+    logStripeMissingKeys("booking checkout retry");
+    return NextResponse.json(
+      { error: STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE, stripeConfigured: false },
+      { status: 503 },
+    );
   }
 
   const session = await createPlatformCheckoutSession({
