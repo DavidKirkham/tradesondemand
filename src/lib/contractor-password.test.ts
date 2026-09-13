@@ -117,15 +117,19 @@ describe("contractor return paths", () => {
     expect(isSafeContractorNextPath("/admin")).toBe(false);
     expect(isSafeContractorNextPath("//evil.example")).toBe(false);
     expect(isSafeContractorNextPath("/contractor/s/secret")).toBe(false);
+    expect(isSafeContractorNextPath("/contractor/forgot")).toBe(false);
+    expect(isSafeContractorNextPath("/contractor/r/secret")).toBe(false);
     expect(contractorLoginHref("/contractor/jobs/abc")).toBe(
       "/contractor?next=%2Fcontractor%2Fjobs%2Fabc",
     );
     expect(contractorLoginHref("/book")).toBe("/contractor");
   });
 
-  it("treats only the login, magic-link, and manifest routes as public", () => {
+  it("treats login, forgot-password, magic-link, and manifest routes as public", () => {
     expect(isPublicContractorPath("/contractor")).toBe(true);
+    expect(isPublicContractorPath("/contractor/forgot")).toBe(true);
     expect(isPublicContractorPath("/contractor/s/tod-waldo-demo")).toBe(true);
+    expect(isPublicContractorPath("/contractor/r/reset-token")).toBe(true);
     expect(isPublicContractorPath("/contractor/manifest.webmanifest")).toBe(true);
     expect(isPublicContractorPath("/contractor/jobs/abc")).toBe(false);
     expect(isPublicContractorPath("/contractor/profile")).toBe(false);

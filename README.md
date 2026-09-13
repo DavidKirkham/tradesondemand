@@ -102,7 +102,8 @@ Prisma expects these folders, in order:
 | `prisma/migrations/20260913160000_contractor_login_token` | `Contractor.loginToken` `TEXT NOT NULL UNIQUE` (backfill, then unique index) |
 | `prisma/migrations/20260913180000_customer_sms` | Optional booking SMS columns |
 | `prisma/migrations/20260913200000_contractor_password` | `Contractor.passwordHash`, `Contractor.sessionToken` (nullable unique) |
-| `prisma/migrations/20260913220000_customer_password` | `Customer.passwordHash`, `Customer.sessionToken`, SMS reset code columns |
+| `prisma/migrations/20260913220000_contractor_password_reset` | `ContractorPasswordReset` (SMS forgot-password token + code hashes) |
+| `prisma/migrations/20260913230000_customer_password` | `Customer.passwordHash`, `Customer.sessionToken`, SMS reset code columns |
 
 Exact production command (`prisma migrate deploy` via the env wrapper):
 
@@ -195,7 +196,7 @@ Password-protected jobs and payments for homeowners and property managers. Cooki
 | Signed-in demo | `riley@example.com` | `8165550144` | `riley-demo-10` | Jobs `TOD-DEMO01` (pending deposit), `TOD-OPEN01`, `TOD-DONE01`, `TOD-CXL01` |
 | Claim path | `jordan@example.com` | `8165550133` | *(none until claimed)* | Job `TOD-CLAIM01` + pending `PAY-CLAIM01`. Invite: `/account/s/demo-claim-customer-kc` |
 
-Production **must** apply `20260913220000_customer_password` (`npm run db:migrate`) or login/register will fail against a missing column.
+Production **must** apply `20260913230000_customer_password` (`npm run db:migrate`) or login/register will fail against a missing column.
 
 ### Contractor PWA (`/contractor`)
 
@@ -210,7 +211,7 @@ Mobile-first app for **approved** licensed partners. Pending and rejected applic
 1. First visit: on `/contractor` tap **Set a password**, enter the application email + phone, choose a 10+ character password.  
 2. Or open the invite `/contractor/s/<loginToken>` (shown on Admin → Subcontractor while no password is set) and choose a password.  
 3. After that, every visit is identifier + password. Session cookie is a rotating `sessionToken`, not the invite token.  
-4. **Forgot password:** there is no email/SMS reset in this release. Dispatch uses **Admin → Subcontractor → Issue set-password link** (clears the hash and issues a new invite) or **Set password** (temporary password to tell the shop).  
+4. **Forgot password:** on `/contractor` tap **Forgot password?** (or open `/contractor/forgot`). Enter email, phone, or shop ID. If the shop is approved and already has a password, Twilio texts the **application phone** a 6-digit code plus a one-time link (`/contractor/r/<token>`). Enter the code (or open the link), choose a new 10+ character password. That issues a new `sessionToken` and invalidates the old password, old session, and the reset. Pending/rejected shops get the same generic message and no text. Dispatch backup is still **Admin → Subcontractor → Issue set-password link** or **Set password**.  
 5. Shops change their own password on **Profile**.
 
 **Seeded test shop (local `npx prisma db seed`):**
@@ -240,7 +241,7 @@ Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancel
 
 **In-app notify (v1):** while signed in, `/contractor` polls `GET /api/contractor/jobs` every 20s, badges the available count, refreshes the list, and can fire a browser `Notification` if the shop taps **Alert me in this browser**. Full Web Push (service-worker push when the PWA is closed) is not in v1.
 
-**Client SMS (optional Twilio):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. If they are missing, Accept still works; the ETA is saved and `/admin/jobs/<id>` shows SMS skipped. Secrets are never logged.
+**Client SMS (optional Twilio):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. If they are missing, Accept still works; the ETA is saved and `/admin/jobs/<id>` shows SMS skipped. The same credentials send contractor **forgot-password** texts to the shop phone. Secrets are never logged.
 
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
@@ -272,7 +273,7 @@ npx prisma db seed
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |
 | `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
 | `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | For client SMS | Contractor Accept ETA texts. Empty = skip SMS, still save the note. |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | For SMS | Contractor Accept ETA texts **and** contractor forgot-password codes/links to the shop phone. Empty = skip send (accept still works; self-serve reset will not deliver a text — use Admin backup). |
 
 ## Routes
 
@@ -286,7 +287,7 @@ npx prisma db seed
 | `/account` `/account/login` `/account/forgot` `/account/jobs/[id]` `/account/profile` | **Customer portal** — password login, jobs past/present, TOD Checkout |
 | `/account/[token]` `/account/s/[token]` | One-time set-password invite (not a passwordless session) |
 | `/status` `/status/[token]` | Customer job status |
-| `/contractor` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — current jobs, past jobs, SMS, TOD payment status, profile |
+| `/contractor` `/contractor/forgot` `/contractor/r/[token]` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — sign-in, forgot-password SMS reset, current jobs, past jobs, SMS, TOD payment status, profile |
 | `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit clients and subcontractors; **assign jobs** (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
 | `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |
