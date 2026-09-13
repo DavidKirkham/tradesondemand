@@ -33,7 +33,7 @@ export async function PATCH(
 
 async function applyContractorJobPatch(
   id: string,
-  contractor: { id: string; businessName: string },
+  contractor: { id: string; businessName: string; tradesJson: string; serviceArea: string },
   body: { status?: string; note?: string; claim?: boolean; eta?: string },
 ) {
   const booking = await prisma.booking.findUnique({ where: { id } });

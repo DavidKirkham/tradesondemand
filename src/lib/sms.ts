@@ -7,7 +7,7 @@ export type SmsResult = {
   error?: string;
 };
 
-export function isTwilioConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+export function isTwilioConfigured(env: Record<string, string | undefined> = process.env): boolean {
   return Boolean(
     env.TWILIO_ACCOUNT_SID?.trim() &&
       env.TWILIO_AUTH_TOKEN?.trim() &&

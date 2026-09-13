@@ -14,13 +14,13 @@ afterEach(() => {
 
 describe("isTwilioConfigured", () => {
   it("requires sid, token, and from number", () => {
-    expect(isTwilioConfigured({} as NodeJS.ProcessEnv)).toBe(false);
+    expect(isTwilioConfigured({})).toBe(false);
     expect(
       isTwilioConfigured({
         TWILIO_ACCOUNT_SID: "ACxxx",
         TWILIO_AUTH_TOKEN: "secret",
         TWILIO_FROM_NUMBER: "+18165550100",
-      } as NodeJS.ProcessEnv),
+      }),
     ).toBe(true);
   });
 });
