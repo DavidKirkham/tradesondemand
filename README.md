@@ -31,23 +31,39 @@ Customers pay **Trades on Demand** for deposits, trip minimums, and later job ba
 
 ## Stripe Checkout (Phase 1)
 
-Platform merchant of record: **Trademark Walls** sandbox (test mode). Do **not** use Stripe Connect `destination` / `transfer_data`.
+Platform merchant of record: **Trademark Walls** sandbox (test mode). Do **not** use Stripe Connect `destination` / `transfer_data`. Checkout and `/api/stripe/webhook` read **only** `process.env` — there is no hardcoded secret key.
 
-1. In [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/test/apikeys) copy the test keys.
-2. Publishable test key (safe client-side; default in `.env.example` and the UI):
+### Publishable key (safe to commit)
 
-   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51UF1qLJOVLPQ6426SHn9n0iOGiePlgrUv0gZEW5Xf41nypWfrtYrae3McmrJxIIf7bu9pw4MCkJzAdH208EqacP600nPrKp2A0`
+Default in `.env.example` and the app if unset:
 
-3. Secrets — Cloud Agent secrets or `.env.local` only. Leave them empty in `.env.example`. Do not invent or commit them:
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_WEBHOOK_SECRET`
-4. Local webhook forward:
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51UF1qLJOVLPQ6426SHn9n0iOGiePlgrUv0gZEW5Xf41nypWfrtYrae3McmrJxIIf7bu9pw4MCkJzAdH208EqacP600nPrKp2A0`
+
+### Secrets (never commit)
+
+Leave `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` empty in `.env.example`. Do not invent values.
+
+**Cursor Cloud Agent:** add them under the environment / Cloud Agent **Secrets** so the run injects them as env vars. The secret key is already stored there for this project; do not paste it into the repo.
+
+**Local machine:** create `.env.local` (gitignored; Next.js loads it automatically):
+
+```bash
+# .env.local — not committed
+STRIPE_SECRET_KEY=sk_test_...          # Stripe Dashboard → Developers → API keys
+STRIPE_WEBHOOK_SECRET=whsec_...        # from `stripe listen` or Dashboard → Webhooks
+# optional override; otherwise the Trademark Walls pk_test_ default is used
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+**Vercel:** Project → Settings → Environment Variables. Same three names. Production runtime needs the secret; the Next.js build does not.
+
+Local webhook forward (prints a `whsec_` to put in `.env.local`):
 
 ```bash
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
-If keys are missing the app still runs: bookings are created, deposits stay **pending**, and ops shows a configuration message. 
+If secrets are missing the app still runs: bookings are created, deposits stay **pending**, and ops shows a configuration message. 
 
 ## Stack
 

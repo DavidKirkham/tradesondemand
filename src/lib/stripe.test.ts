@@ -17,7 +17,7 @@ describe("stripe env helpers", () => {
   it("does not configure Checkout when secrets are missing", () => {
     expect(isStripeCheckoutConfigured()).toBe(false);
     expect(getStripe()).toBeNull();
-    expect(stripeMissingKeysMessage()).toMatch(/STRIPE_SECRET_KEY/);
+    expect(stripeMissingKeysMessage()).toMatch(/Cloud Agent secrets or \.env\.local/);
   });
 
   it("defaults to the Trademark Walls publishable test key", () => {

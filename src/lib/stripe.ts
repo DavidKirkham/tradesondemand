@@ -7,6 +7,7 @@ export const DEFAULT_STRIPE_PUBLISHABLE_KEY =
 const PLACEHOLDER_SECRETS = new Set(["", "sk_test_xxx", "whsec_xxx"]);
 
 export function getStripeSecretKey(): string | null {
+  // Cloud Agent secrets, Vercel env, or .env.local — never a hardcoded secret.
   const value = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
   if (!value || PLACEHOLDER_SECRETS.has(value) || !value.startsWith("sk_")) return null;
   return value;
@@ -18,6 +19,7 @@ export function getStripePublishableKey(): string {
 }
 
 export function getStripeWebhookSecret(): string | null {
+  // Cloud Agent secrets, Vercel env, or .env.local — never a hardcoded webhook secret.
   const value = process.env.STRIPE_WEBHOOK_SECRET?.trim() ?? "";
   if (!value || PLACEHOLDER_SECRETS.has(value) || !value.startsWith("whsec_")) return null;
   return value;
@@ -28,7 +30,7 @@ export function isStripeCheckoutConfigured(): boolean {
 }
 
 export function stripeMissingKeysMessage(): string {
-  return "Stripe Checkout is not configured. Add STRIPE_SECRET_KEY from Stripe Dashboard → Developers → API keys (Trademark Walls sandbox). Booking still works; the TOD deposit stays pending until Checkout is enabled.";
+  return "Stripe Checkout is not configured. Set STRIPE_SECRET_KEY in Cloud Agent secrets or .env.local (Trademark Walls sandbox — Stripe Dashboard → Developers → API keys). Booking still works; the TOD deposit stays pending until Checkout is enabled.";
 }
 
 let cached: Stripe | null | undefined;

@@ -421,9 +421,9 @@ export function OpsBoard({
             </p>
           ) : (
             <p className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-navy">
-              Stripe keys are missing. Set STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, and
-              STRIPE_WEBHOOK_SECRET. The site still runs; deposits stay pending until Checkout is
-              enabled.
+              Stripe secrets are missing. Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in Cloud
+              Agent secrets or .env.local (not in git). The publishable key is already defaulted.
+              The site still runs; deposits stay pending until Checkout is enabled.
             </p>
           )}
           {initialPayments.length === 0 ? (
