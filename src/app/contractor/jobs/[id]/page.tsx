@@ -2,11 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
 import { ContractorJobActions } from "@/components/contractor-app/ContractorJobActions";
-import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
 import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
 import { isPastContractorJob, jobFitsContractor } from "@/lib/contractor-app";
-import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
+import { requireApprovedContractor } from "@/lib/contractor-auth";
 import {
   contractorJobPaymentLabel,
   contractorJobPaymentStatus,
@@ -25,10 +24,8 @@ export default async function ContractorJobDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const contractor = await getApprovedContractorFromCookie();
-  if (!contractor) return <ContractorLogin />;
-
   const { id } = await params;
+  const contractor = await requireApprovedContractor(`/contractor/jobs/${id}`);
   const job = await prisma.booking.findUnique({
     where: { id },
     omit: BOOKING_SMS_OMIT,

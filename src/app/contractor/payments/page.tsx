@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
-import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
 import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import {
@@ -9,7 +8,7 @@ import {
   contractorJobPaymentStatus,
   sumContractorPayments,
 } from "@/lib/contractor-payments";
-import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
+import { requireApprovedContractor } from "@/lib/contractor-auth";
 import { formatUsd } from "@/lib/money";
 import { paymentStatusLabel, paymentTypeLabel } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
@@ -18,8 +17,7 @@ import { getTrade } from "@/lib/trades";
 export const dynamic = "force-dynamic";
 
 export default async function ContractorPaymentsPage() {
-  const contractor = await getApprovedContractorFromCookie();
-  if (!contractor) return <ContractorLogin />;
+  const contractor = await requireApprovedContractor("/contractor/payments");
 
   const jobs = await prisma.booking.findMany({
     where: { contractorId: contractor.id },

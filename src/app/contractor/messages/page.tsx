@@ -1,10 +1,9 @@
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
-import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
 import { ContractorSmsForm } from "@/components/contractor-app/ContractorSmsForm";
 import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT, withOptionalBookingSmsColumns } from "@/lib/booking-sms-columns";
 import { isOpenContractorJob } from "@/lib/contractor-app";
-import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
+import { requireApprovedContractor } from "@/lib/contractor-auth";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
@@ -23,8 +22,7 @@ type SmsJob = {
 };
 
 export default async function ContractorMessagesPage() {
-  const contractor = await getApprovedContractorFromCookie();
-  if (!contractor) return <ContractorLogin />;
+  const contractor = await requireApprovedContractor("/contractor/messages");
 
   const rows = await withOptionalBookingSmsColumns((omitSms) =>
     prisma.booking.findMany({

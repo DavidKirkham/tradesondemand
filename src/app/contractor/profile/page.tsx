@@ -1,15 +1,14 @@
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
-import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
+import { ContractorPasswordForm } from "@/components/contractor-app/ContractorPasswordForm";
 import { ContractorProfileForm } from "@/components/contractor-app/ContractorProfileForm";
 import { parseContractorTradeRates, parseContractorTrades } from "@/lib/contractor-app";
-import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
+import { requireApprovedContractor } from "@/lib/contractor-auth";
 import { getTrade } from "@/lib/trades";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContractorProfilePage() {
-  const contractor = await getApprovedContractorFromCookie();
-  if (!contractor) return <ContractorLogin />;
+  const contractor = await requireApprovedContractor("/contractor/profile");
 
   const trades = parseContractorTrades(contractor.tradesJson);
 
@@ -39,6 +38,9 @@ export default async function ContractorProfilePage() {
           tradeRates={parseContractorTradeRates(contractor.tradeRatesJson)}
           slug={contractor.slug}
         />
+      </div>
+      <div className="mt-6">
+        <ContractorPasswordForm />
       </div>
     </ContractorAppShell>
   );

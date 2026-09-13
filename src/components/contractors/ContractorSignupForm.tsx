@@ -114,7 +114,9 @@ export function ContractorSignupForm() {
         <p className="mt-3 text-muted">
           Application <span className="font-mono font-semibold text-navy">{result.publicId}</span> is
           with the KC ops desk. We only publish licensed metro partners after a human looks at the
-          license and insurance. You will not appear in the directory until you are approved.
+          license and insurance. You will not appear in the directory until you are approved. After
+          approval, set a password at /contractor (email + phone from this application, or the
+          invite link dispatch sends).
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link

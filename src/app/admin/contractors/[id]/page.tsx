@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminAssignJobToContractor } from "@/components/admin/AdminAssignJobToContractor";
 import { AdminContractorEditor } from "@/components/admin/AdminContractorEditor";
+import { AdminContractorPassword } from "@/components/admin/AdminContractorPassword";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { contractorOffersTrade, jobIsAssignable } from "@/lib/admin-assign";
@@ -98,6 +99,12 @@ async function ContractorDetail({ id }: { id: string }) {
           ) : null}
         </p>
       </div>
+
+      <AdminContractorPassword
+        id={contractor.id}
+        passwordSet={Boolean(contractor.passwordHash)}
+        invitePath={contractor.passwordHash ? null : `/contractor/s/${contractor.loginToken}`}
+      />
 
       <AdminContractorEditor
         key={`${contractor.id}-${contractor.status}`}
