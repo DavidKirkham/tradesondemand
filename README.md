@@ -34,11 +34,14 @@ Customers pay **Trades on Demand** for deposits, trip minimums, and later job ba
 Platform merchant of record: **Trademark Walls** sandbox (test mode). Do **not** use Stripe Connect `destination` / `transfer_data`.
 
 1. In [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/test/apikeys) copy the test keys.
-2. Set in Cloud Agent secrets or `.env.local` (never commit secrets):
-   - `STRIPE_SECRET_KEY` (`sk_test_…`)
-   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_test_…` — also in `.env.example`)
-   - `STRIPE_WEBHOOK_SECRET` (`whsec_…` from the webhook endpoint or `stripe listen`)
-3. Local webhook forward:
+2. Publishable test key (safe client-side; default in `.env.example` and the UI):
+
+   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51UF1qLJOVLPQ6426SHn9n0iOGiePlgrUv0gZEW5Xf41nypWfrtYrae3McmrJxIIf7bu9pw4MCkJzAdH208EqacP600nPrKp2A0`
+
+3. Secrets — Cloud Agent secrets or `.env.local` only. Leave them empty in `.env.example`. Do not invent or commit them:
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+4. Local webhook forward:
 
 ```bash
 stripe listen --forward-to localhost:3000/api/stripe/webhook
@@ -110,7 +113,7 @@ npx prisma db seed
 | `DATABASE_URL_UNPOOLED` | No | Direct Postgres URL for migrations. Defaults to `DATABASE_URL` or Neon `POSTGRES_URL_NON_POOLING`. |
 | `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` | No | Tap-to-call. Hardcoded default is **8165160735** — displays **(816) 516-0735**, links `tel:+18165160735`. Demos work with no env file. |
 | `OPS_PASSWORD` | Yes | Password for `/ops` (default in `.env.example`: `dispatch`) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls test publishable key (safe client-side) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |
 | `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
 | `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |
 

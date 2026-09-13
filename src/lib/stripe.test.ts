@@ -20,10 +20,11 @@ describe("stripe env helpers", () => {
     expect(stripeMissingKeysMessage()).toMatch(/STRIPE_SECRET_KEY/);
   });
 
-  it("accepts the Trademark Walls publishable test key", () => {
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY =
-      "pk_test_51UF1qLJOVLPQ6426SHn9n0iOGiePlgrUv0gZEW5Xf41nypWfrtYrae3McmrJxIIf7bu9pw4MCkJzAdH208EqacP600nPrKp2A0";
-    expect(getStripePublishableKey()?.startsWith("pk_test_")).toBe(true);
+  it("defaults to the Trademark Walls publishable test key", () => {
+    delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    expect(getStripePublishableKey()).toBe(
+      "pk_test_51UF1qLJOVLPQ6426SHn9n0iOGiePlgrUv0gZEW5Xf41nypWfrtYrae3McmrJxIIf7bu9pw4MCkJzAdH208EqacP600nPrKp2A0",
+    );
   });
 
   it("ignores placeholder secret values", () => {

@@ -1,5 +1,9 @@
 import Stripe from "stripe";
 
+/** Trademark Walls sandbox publishable key — safe on the client. Secrets stay in env only. */
+export const DEFAULT_STRIPE_PUBLISHABLE_KEY =
+  "pk_test_51UF1qLJOVLPQ6426SHn9n0iOGiePlgrUv0gZEW5Xf41nypWfrtYrae3McmrJxIIf7bu9pw4MCkJzAdH208EqacP600nPrKp2A0";
+
 const PLACEHOLDER_SECRETS = new Set(["", "sk_test_xxx", "whsec_xxx"]);
 
 export function getStripeSecretKey(): string | null {
@@ -8,10 +12,9 @@ export function getStripeSecretKey(): string | null {
   return value;
 }
 
-export function getStripePublishableKey(): string | null {
-  const value = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
-  if (!value || !value.startsWith("pk_")) return null;
-  return value;
+export function getStripePublishableKey(): string {
+  const value = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || DEFAULT_STRIPE_PUBLISHABLE_KEY;
+  return value.startsWith("pk_") ? value : DEFAULT_STRIPE_PUBLISHABLE_KEY;
 }
 
 export function getStripeWebhookSecret(): string | null {
