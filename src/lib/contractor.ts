@@ -132,7 +132,7 @@ export function rateForTrade(
 }
 
 export function contractorStatusLabel(status: string): string {
-  switch (status) {
+  switch (normalizeContractorStatus(status)) {
     case "PENDING":
       return "Pending review";
     case "APPROVED":
@@ -142,6 +142,15 @@ export function contractorStatusLabel(status: string): string {
     default:
       return status;
   }
+}
+
+/** Approve / Reject only while the application is still in review. */
+export function showContractorReviewActions(status: string): boolean {
+  return normalizeContractorStatus(status) === "PENDING";
+}
+
+function normalizeContractorStatus(status: string): string {
+  return status.trim().toUpperCase();
 }
 
 export function validateContractorInput(input: ContractorInput): ContractorValidation {

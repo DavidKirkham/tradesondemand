@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { contractorStatusLabel, showContractorReviewActions } from "@/lib/contractor";
 import { centsToInput } from "@/lib/money";
 import { TRADES } from "@/lib/trades";
 
@@ -84,6 +85,10 @@ export function AdminContractorEditor({
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setForm((current) => (current.status === status ? current : { ...current, status }));
+  }, [status]);
+
   const selected = useMemo(
     () => TRADES.filter((trade) => selectedTrades.includes(trade.slug)),
     [selectedTrades],
@@ -164,11 +169,7 @@ export function AdminContractorEditor({
     <div className="space-y-5 rounded-2xl border border-line bg-paper p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-2xl text-navy">Profile</h2>
-        {form.status === "APPROVED" ? (
-          <p className="inline-flex h-10 items-center rounded-full bg-ok/15 px-4 text-sm font-semibold text-ok">
-            Approved
-          </p>
-        ) : (
+        {showContractorReviewActions(form.status) ? (
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -178,26 +179,25 @@ export function AdminContractorEditor({
             >
               Approve
             </button>
-            {form.status === "PENDING" ? (
-              <button
-                type="button"
-                onClick={() => setStatus("REJECTED")}
-                disabled={saving}
-                className="h-10 rounded-full bg-danger px-4 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                Reject
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setStatus("PENDING")}
-                disabled={saving}
-                className="h-10 rounded-full border border-line px-4 text-sm font-semibold text-navy disabled:opacity-60"
-              >
-                Back to pending
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setStatus("REJECTED")}
+              disabled={saving}
+              className="h-10 rounded-full bg-danger px-4 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              Reject
+            </button>
           </div>
+        ) : (
+          <p
+            className={`inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold ${
+              form.status.trim().toUpperCase() === "REJECTED"
+                ? "bg-danger/15 text-danger"
+                : "bg-ok/15 text-ok"
+            }`}
+          >
+            {contractorStatusLabel(form.status)}
+          </p>
         )}
       </div>
 

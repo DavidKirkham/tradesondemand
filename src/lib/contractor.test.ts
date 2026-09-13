@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serviceAreaLooksLikeMetro, validateContractorInput } from "./contractor";
+import { serviceAreaLooksLikeMetro, showContractorReviewActions, validateContractorInput } from "./contractor";
 import { parseUsdToCents } from "./money";
 
 const base = {
@@ -70,6 +70,15 @@ describe("contractor application", () => {
         { slug: "hvac", hourlyCents: 11000, minimumCents: 18900 },
       ]);
     }
+  });
+});
+
+describe("showContractorReviewActions", () => {
+  it("shows Approve/Reject only while pending", () => {
+    expect(showContractorReviewActions("PENDING")).toBe(true);
+    expect(showContractorReviewActions(" pending ")).toBe(true);
+    expect(showContractorReviewActions("APPROVED")).toBe(false);
+    expect(showContractorReviewActions("REJECTED")).toBe(false);
   });
 });
 

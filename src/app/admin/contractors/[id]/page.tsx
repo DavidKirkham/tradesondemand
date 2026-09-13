@@ -97,6 +97,7 @@ async function ContractorDetail({ id }: { id: string }) {
       </div>
 
       <AdminContractorEditor
+        key={`${contractor.id}-${contractor.status}`}
         id={contractor.id}
         businessName={contractor.businessName}
         contactName={contractor.contactName}
