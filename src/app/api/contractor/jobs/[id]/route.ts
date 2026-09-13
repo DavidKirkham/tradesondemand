@@ -41,6 +41,12 @@ async function applyContractorJobPatch(
 
   const assigned = booking.contractorId === contractor.id;
   const available = !booking.contractorId && jobFitsContractor(booking, contractor);
+  if (booking.contractorId && !assigned && (body.claim || body.eta)) {
+    return NextResponse.json(
+      { error: "This job was already taken by another shop." },
+      { status: 409 },
+    );
+  }
   if (!assigned && !available) {
     return NextResponse.json({ error: "This job is not assigned to your shop." }, { status: 403 });
   }

@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type JobPreview = { id: string; publicId: string; trade: string; city: string; zip: string };
 
-export function AvailableJobsWatcher({ initialCount }: { initialCount: number }) {
+export function AvailableJobsWatcher({ initialCount = 0 }: { initialCount?: number }) {
+  const router = useRouter();
   const seen = useRef<Set<string> | null>(null);
   const [count, setCount] = useState(initialCount);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
@@ -37,16 +39,18 @@ export function AvailableJobsWatcher({ initialCount }: { initialCount: number })
       }
       const fresh = available.filter((job) => !seen.current!.has(job.id));
       seen.current = ids;
-      if (
-        fresh.length > 0 &&
-        typeof window !== "undefined" &&
-        "Notification" in window &&
-        Notification.permission === "granted"
-      ) {
-        const job = fresh[0];
-        new Notification("New TOD job in your area", {
-          body: `${job.trade} · ${job.city} ${job.zip} · ${job.publicId}`,
-        });
+      if (fresh.length > 0) {
+        router.refresh();
+        if (
+          typeof window !== "undefined" &&
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          const job = fresh[0];
+          new Notification("New TOD job in your area", {
+            body: `${job.trade} · ${job.city} ${job.zip} · ${job.publicId}`,
+          });
+        }
       }
     }
 
@@ -56,7 +60,7 @@ export function AvailableJobsWatcher({ initialCount }: { initialCount: number })
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [router]);
 
   async function enable() {
     if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -65,20 +69,20 @@ export function AvailableJobsWatcher({ initialCount }: { initialCount: number })
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+    <div className="mt-1 flex flex-wrap items-center gap-2 text-[0.7rem] text-cream/80">
       {count > 0 ? (
         <span className="rounded-full bg-ember px-2 py-0.5 font-semibold text-white">{count} available</span>
       ) : (
-        <span className="text-muted">No new matches</span>
+        <span>No new matches</span>
       )}
       {permission === "default" ? (
-        <button type="button" onClick={() => void enable()} className="font-semibold text-ember">
+        <button type="button" onClick={() => void enable()} className="font-semibold text-gold">
           Alert me in this browser
         </button>
       ) : permission === "granted" ? (
-        <span className="text-muted">Browser alerts on while this page is open</span>
+        <span>Browser alerts on while the app is open</span>
       ) : permission === "denied" ? (
-        <span className="text-muted">Browser alerts blocked</span>
+        <span>Browser alerts blocked</span>
       ) : null}
     </div>
   );

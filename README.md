@@ -190,9 +190,11 @@ Mobile-first app for **approved** licensed partners. Pending and rejected applic
 
 A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
 
-Inside the app: assigned jobs, available jobs in your trades/area, job detail, **Accept** (race-safe claim), arrival / ETA text to the client, status (en route / on site / done), and public profile edit. Available cards show neighborhood/ZIP only — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site.
+Inside the app: assigned jobs, available jobs in your trades/area, job detail, **Accept** (race-safe claim), arrival / ETA text to the client, status (en route / on site / done), and public profile edit. Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site.
 
-While `/contractor` is open, the jobs list polls every 20s. If you allow browser notifications, a new matching available job shows an alert. Full Web Push is not in v1.
+**Matching:** an unassigned, not-complete/cancelled booking is available when the shop is **APPROVED**, their `tradesJson` includes the job trade, and `serviceArea` covers the job city or ZIP (case-insensitive substring). Writing **metro** (e.g. “Kansas City metro”) also matches any KC metro city/ZIP from `src/lib/kc-metro.ts`. A city-only list (e.g. “Olathe and 66061”) does not see Independence.
+
+**In-app notify (v1):** while signed in, `/contractor` polls `GET /api/contractor/jobs` every 20s, badges the available count, refreshes the list, and can fire a browser `Notification` if the shop taps **Alert me in this browser**. Full Web Push (service-worker push when the PWA is closed) is not in v1.
 
 **Client SMS (optional Twilio):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. If they are missing, Accept still works; the ETA is saved and `/admin/jobs/<id>` shows SMS skipped. Secrets are never logged.
 

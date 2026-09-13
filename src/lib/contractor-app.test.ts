@@ -20,6 +20,29 @@ describe("jobFitsContractor", () => {
   it("rejects a trade they do not offer", () => {
     expect(jobFitsContractor({ trade: "roofing", city: "Kansas City", zip: "64114" }, waldo)).toBe(false);
   });
+
+  it("matches a ZIP listed in the service area", () => {
+    expect(
+      jobFitsContractor(
+        { trade: "plumbing", city: "Olathe", zip: "66061" },
+        { tradesJson: JSON.stringify(["plumbing"]), serviceArea: "Johnson County 66061" },
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat every metro city as in-area unless they wrote metro", () => {
+    const olathe = {
+      tradesJson: JSON.stringify(["plumbing"]),
+      serviceArea: "Olathe and 66061",
+    };
+    expect(jobFitsContractor({ trade: "plumbing", city: "Independence", zip: "64050" }, olathe)).toBe(false);
+    expect(
+      jobFitsContractor(
+        { trade: "plumbing", city: "Independence", zip: "64050" },
+        { tradesJson: JSON.stringify(["plumbing"]), serviceArea: "Kansas City metro" },
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("contractorLoginBlockReason", () => {

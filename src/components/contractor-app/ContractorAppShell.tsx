@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { AvailableJobsWatcher } from "@/components/contractor-app/AvailableJobsWatcher";
 
 export function ContractorAppShell({
   businessName,
@@ -30,6 +31,7 @@ export function ContractorAppShell({
         <p className="stamp text-[0.65rem] text-gold">TOD contractor</p>
         <p className="font-display text-lg leading-tight">{businessName}</p>
         <p className="text-xs text-cream/70">Customers pay Trades on Demand — no on-site collection.</p>
+        <AvailableJobsWatcher />
       </header>
       <div className="flex-1 px-4 pb-24 pt-4">{children}</div>
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-paper/95 backdrop-blur">

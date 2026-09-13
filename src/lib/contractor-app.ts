@@ -1,4 +1,5 @@
 import { parseTradesJson, parseTradeRatesJson, serviceAreaLooksLikeMetro, type TradeRate } from "./contractor";
+import { isMetroCity, isMetroZip } from "./kc-metro";
 import { parseUsdToCents } from "./money";
 import { isKnownTrade } from "./trades";
 
@@ -38,9 +39,14 @@ export function jobFitsContractor(
   const trades = parseTradesJson(contractor.tradesJson);
   if (!trades.includes(booking.trade)) return false;
   const area = contractor.serviceArea.toLowerCase();
-  if (area.includes(booking.city.trim().toLowerCase())) return true;
-  if (area.includes(booking.zip)) return true;
-  return serviceAreaLooksLikeMetro(contractor.serviceArea);
+  const city = booking.city.trim().toLowerCase();
+  if (city && area.includes(city)) return true;
+  if (booking.zip && area.includes(booking.zip)) return true;
+  // "KC metro" / "Kansas City metro" covers any metro city/ZIP; a city-only list does not.
+  if (/\bmetro\b/i.test(contractor.serviceArea) && (isMetroCity(booking.city) || isMetroZip(booking.zip))) {
+    return true;
+  }
+  return false;
 }
 
 export type ContractorProfilePatch = {

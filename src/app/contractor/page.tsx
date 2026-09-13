@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AvailableJobsWatcher } from "@/components/contractor-app/AvailableJobsWatcher";
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
 import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
 import { jobFitsContractor } from "@/lib/contractor-app";
@@ -35,7 +34,6 @@ export default async function ContractorHomePage() {
     <ContractorAppShell businessName={contractor.businessName}>
       <h1 className="font-display text-2xl text-navy">Jobs</h1>
       <p className="mt-1 text-sm text-muted">Assigned to you, plus open tickets in your trades and area.</p>
-      <AvailableJobsWatcher initialCount={available.length} />
 
       <section className="mt-6">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Assigned</h2>
@@ -46,7 +44,7 @@ export default async function ContractorHomePage() {
         ) : (
           <ul className="mt-2 space-y-2">
             {assigned.map((job) => (
-              <JobRow key={job.id} {...job} revealCustomer />
+              <JobRow key={job.id} {...job} revealCustomer problem={job.problem} />
             ))}
           </ul>
         )}
@@ -61,7 +59,7 @@ export default async function ContractorHomePage() {
         ) : (
           <ul className="mt-2 space-y-2">
             {available.map((job) => (
-              <JobRow key={job.id} {...job} revealCustomer={false} />
+              <JobRow key={job.id} {...job} revealCustomer={false} problem={job.problem} />
             ))}
           </ul>
         )}
@@ -81,6 +79,7 @@ function JobRow({
   customerPhone,
   status,
   revealCustomer,
+  problem,
 }: {
   id: string;
   publicId: string;
@@ -92,6 +91,7 @@ function JobRow({
   customerPhone: string;
   status: string;
   revealCustomer: boolean;
+  problem?: string;
 }) {
   return (
     <li>
@@ -106,7 +106,9 @@ function JobRow({
             {customerName} · {formatPhone(customerPhone)}
           </p>
         ) : (
-          <p className="mt-1 text-sm text-muted">Neighborhood / ZIP only until you accept.</p>
+          <p className="mt-1 text-sm text-navy">
+            {problem ? (problem.length > 140 ? `${problem.slice(0, 137)}…` : problem) : "Neighborhood / ZIP only until you accept."}
+          </p>
         )}
       </Link>
     </li>
