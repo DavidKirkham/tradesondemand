@@ -8,27 +8,30 @@ datasource db {
 }
 
 model Booking {
-  id               String        @id @default(cuid())
-  publicId         String        @unique
-  token            String        @unique
-  trade            String
-  problem          String
-  urgency          String
-  street           String
-  city             String
-  state            String
-  zip              String
-  customerName     String
-  customerPhone    String
-  customerEmail    String
-  status           String        @default("RECEIVED")
-  quoteSummary     String
-  contractorId     String?
-  contractor       Contractor?   @relation(fields: [contractorId], references: [id])
-  matchPreference  String        @default("FIRST_AVAILABLE")
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  events           StatusEvent[]
+  id              String        @id @default(cuid())
+  publicId        String        @unique
+  token           String        @unique
+  trade           String
+  problem         String
+  urgency         String
+  street          String
+  city            String
+  state           String
+  zip             String
+  customerName    String
+  customerPhone   String
+  customerEmail   String
+  status          String        @default("RECEIVED")
+  quoteSummary    String
+  contractorId    String?
+  contractor      Contractor?   @relation(fields: [contractorId], references: [id])
+  customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  matchPreference String        @default("FIRST_AVAILABLE")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  events          StatusEvent[]
+  payments        Payment[]
 }
 
 model StatusEvent {
@@ -68,4 +71,35 @@ model Contractor {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   bookings           Booking[]
+}
+
+model Customer {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String
+  phone             String
+  token             String    @unique
+  preferredContact  String    @default("PHONE")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  bookings          Booking[]
+  payments          Payment[]
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  publicId    String   @unique
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  amountCents Int
+  type        String
+  status      String   @default("PENDING")
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([customerId])
 }

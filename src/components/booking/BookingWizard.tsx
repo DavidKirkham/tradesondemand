@@ -145,12 +145,22 @@ export function BookingWizard({
             Routine jobs get a confirmed window. You&apos;ll see status move from Received to Dispatched.
           </p>
         )}
+        <p className="mt-4 text-sm text-muted">
+          You paid Trades on Demand (stubbed checkout) — not the contractor. Open your private
+          profile for receipts and job history.
+        </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href={`/status/${result.token}`}
             className="inline-flex h-12 items-center justify-center rounded-full bg-navy px-5 text-sm font-semibold text-cream"
           >
             View job status
+          </Link>
+          <Link
+            href="/account"
+            className="inline-flex h-12 items-center justify-center rounded-full border border-line px-5 text-sm font-semibold text-navy"
+          >
+            My profile
           </Link>
           <CallButton variant="ember" />
         </div>
@@ -335,8 +345,8 @@ export function BookingWizard({
             <div>
               <h2 className="font-display text-xl text-navy">Quote &amp; deposit — straight talk</h2>
               <p className="mt-1 text-sm text-muted">
-                No real card processing in this demo. This is the policy a live dispatch desk would
-                honor.
+                You pay Trades on Demand — never the contractor directly. TOD then pays the partner.
+                Card processing is stubbed in this demo.
               </p>
             </div>
             <div className="rounded-2xl bg-navy px-5 py-6 text-cream">
@@ -378,6 +388,10 @@ export function BookingWizard({
               placeholder="you@email.com"
               inputMode="email"
             />
+            <p className="rounded-xl bg-navy/5 px-4 py-3 text-sm text-navy">
+              Checkout is with Trades on Demand. The selected contractor never sees your card and
+              is not the merchant of record.
+            </p>
             <Review form={form} />
           </section>
         ) : null}
@@ -421,7 +435,7 @@ export function BookingWizard({
               disabled={submitting}
               className="h-12 rounded-full bg-ember px-6 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {submitting ? "Sending to dispatch…" : "Confirm booking"}
+              {submitting ? "Charging TOD deposit…" : "Pay TOD & confirm booking"}
             </button>
           )}
         </div>

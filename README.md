@@ -10,7 +10,8 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 - **KC metro only.** Kansas City (MO and KS), Overland Park, Olathe, Independence, Lee’s Summit, Shawnee, Lenexa, Leawood, Blue Springs, Liberty, and nearby ZIPs. Non-metro cities and ZIPs are rejected with a clear message.
 - **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` if needed; the UI works without env setup.
 - **Licensed contractors.** Partners apply at `/contractors/signup`. Ops approves/rejects. Approved shops get a public profile and can be chosen during booking.
-- **v1 surfaces.** Customer booking (including contractor pick), job status, contractor directory/profiles, ops review. No contractor mobile app. No live Stripe or SMS.
+- **Marketplace payments.** Customers pay **Trades on Demand**. TOD pays contractors. No pay-the-pro-directly flow. Stripe is stubbed; payment rows still exist.
+- **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, ops review + TOD ledger. No contractor mobile app. No live Stripe or SMS.
 
 ## Core booking loop
 
@@ -81,8 +82,9 @@ npx prisma db seed
 | `/contractors` | Approved contractor directory |
 | `/contractors/[slug]` | Public profile (approved only) |
 | `/contractors/signup` `/join` | Licensed contractor application |
+| `/account` | Private customer profile (email + phone after first book) |
 | `/status` `/status/[token]` | Customer job status |
-| `/ops` | Dispatch board + contractor review (password) |
+| `/ops` | Jobs, contractor review, customers, TOD payments |
 | `/api/bookings` | Create booking |
 | `/api/contractors` | Public list (approved) + signup POST |
 | `/api/status/[token]` | Lookup by job ID or token |

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createPublicId, createToken, validateBookingInput, type BookingInput } from "@/lib/booking";
-import { parseTradesJson } from "@/lib/contractor";
+import { parseTradeRatesJson, parseTradesJson } from "@/lib/contractor";
+import { createCustomerToken, createPaymentPublicId } from "@/lib/customer";
+import { customerCookieOptions } from "@/lib/customer-auth";
+import { depositForBooking } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +36,7 @@ export async function POST(request: Request) {
   }
 
   let contractorId: string | null = null;
+  let contractorForDeposit: Parameters<typeof depositForBooking>[0]["contractor"] = null;
   if (parsed.data.matchPreference === "SPECIFIC" && parsed.data.contractorId) {
     const contractor = await prisma.contractor.findUnique({
       where: { id: parsed.data.contractorId },
@@ -50,7 +54,33 @@ export async function POST(request: Request) {
       );
     }
     contractorId = contractor.id;
+    contractorForDeposit = {
+      hourlyRateCents: contractor.hourlyRateCents,
+      minimumChargeCents: contractor.minimumChargeCents,
+      emergencyRateCents: contractor.emergencyRateCents,
+      tradeRates: parseTradeRatesJson(contractor.tradeRatesJson),
+    };
   }
+
+  const deposit = depositForBooking({
+    urgency: parsed.data.urgency,
+    trade: parsed.data.trade,
+    contractor: contractorForDeposit,
+  });
+
+  const customer = await prisma.customer.upsert({
+    where: { email: parsed.data.customerEmail },
+    update: {
+      name: parsed.data.customerName,
+      phone: parsed.data.customerPhone,
+    },
+    create: {
+      email: parsed.data.customerEmail,
+      name: parsed.data.customerName,
+      phone: parsed.data.customerPhone,
+      token: createCustomerToken(),
+    },
+  });
 
   const booking = await prisma.booking.create({
     data: {
@@ -64,8 +94,9 @@ export async function POST(request: Request) {
       customerName: parsed.data.customerName,
       customerPhone: parsed.data.customerPhone,
       customerEmail: parsed.data.customerEmail,
-      quoteSummary: parsed.data.quoteSummary,
+      quoteSummary: `${parsed.data.quoteSummary} · ${deposit.summary}`,
       contractorId,
+      customerId: customer.id,
       matchPreference: contractorId ? "SPECIFIC" : "FIRST_AVAILABLE",
       publicId: createPublicId(),
       token: createToken(),
@@ -75,12 +106,30 @@ export async function POST(request: Request) {
           note: parsed.data.urgency === "emergency" ? "Emergency ticket opened" : "Routine ticket opened",
         },
       },
+      payments: {
+        create: {
+          publicId: createPaymentPublicId(),
+          customerId: customer.id,
+          amountCents: deposit.amountCents,
+          type: "DEPOSIT",
+          status: deposit.amountCents === 0 ? "PAID" : "PAID",
+          note:
+            deposit.amountCents === 0
+              ? "No trip deposit. Future job balance is paid to Trades on Demand, not the contractor. Stripe stub."
+              : "Stubbed TOD checkout — customer paid Trades on Demand, not the contractor. No live Stripe.",
+        },
+      },
     },
   });
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     publicId: booking.publicId,
     token: booking.token,
     status: booking.status,
+    customerToken: customer.token,
+    deposit,
   });
+  const cookie = customerCookieOptions(customer.token);
+  response.cookies.set(cookie.name, cookie.value, cookie);
+  return response;
 }

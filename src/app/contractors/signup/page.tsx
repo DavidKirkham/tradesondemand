@@ -17,7 +17,7 @@ export default function ContractorSignupPage() {
         Trades on Demand is a Kansas City dispatch desk, not a national lead mill. Apply if you are
         licensed in Missouri or Kansas and actually cover this metro. There is no contractor app in
         v1 — signup and ops review only. Approved shops get a public profile customers can open
-        before they book.
+        before they book. Customers pay Trades on Demand; we pay you. Do not add a personal checkout.
       </p>
       <div className="mt-5">
         <CallButton variant="ghost" />

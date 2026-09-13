@@ -286,7 +286,8 @@ export function ContractorSignupForm() {
         />
         <span>
           I confirm this application is accurate, I am licensed for the trades selected, and I agree
-          that Trades on Demand may list my approved profile for Kansas City metro customers.
+          that customers pay Trades on Demand (TOD pays me). Bank payout details are coming later
+          — do not collect cards or cash as the merchant on TOD jobs.
         </span>
       </label>
 

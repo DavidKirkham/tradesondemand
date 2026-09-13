@@ -149,8 +149,8 @@ export default function HomePage() {
             <h2 className="font-display text-2xl text-navy">Price, before anyone drives</h2>
             <p className="mt-3 text-sm leading-7 text-muted">
               Emergencies show a dispatch hold range. Routine visits don&apos;t take a trip fee to
-              get on the calendar. Final work is approved on site. Payments and SMS are out of
-              scope for v1 — the desk still tells you the rules up front.
+              get on the calendar. You pay Trades on Demand; we pay the partner. Card charges are
+              stubbed in v1 but the ledger still records a TOD receipt.
             </p>
           </div>
         </div>

@@ -21,11 +21,15 @@ const FAQS = [
   },
   {
     q: "Will you take a payment online?",
-    a: "Not in this version. You will see the dispatch-hold and deposit rules before you confirm. Card charges and SMS are out of scope for v1.",
+    a: "You pay Trades on Demand — never the contractor directly. v1 stubs the card charge but still creates a TOD payment/receipt. TOD pays the partner later. SMS is still out of scope.",
   },
   {
     q: "I rent in Midtown / a Johnson County apartment. Can I book?",
     a: "Yes, if the job ZIP is in the metro. We still need a name and a phone the tech can use at the door. Landlord approval is on you.",
+  },
+  {
+    q: "Where is my customer profile?",
+    a: "Booking creates a private profile keyed to your email. Open /account with that email and phone, or use the magic link from confirmation. Addresses and receipts stay off the public contractor directory.",
   },
   {
     q: "How do I check status?",

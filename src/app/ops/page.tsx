@@ -12,9 +12,17 @@ export default async function OpsPage() {
     return <OpsLogin />;
   }
 
-  const [bookings, contractors] = await Promise.all([
+  const [bookings, contractors, customers, payments] = await Promise.all([
     prisma.booking.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.contractor.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.customer.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { bookings: true, payments: true } } },
+    }),
+    prisma.payment.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { booking: true, customer: true },
+    }),
   ]);
 
   const contractorNames = Object.fromEntries(contractors.map((row) => [row.id, row.businessName]));
@@ -48,6 +56,27 @@ export default async function OpsPage() {
         createdAt: row.createdAt.toISOString(),
       }))}
       contractorNames={contractorNames}
+      initialCustomers={customers.map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        phone: row.phone,
+        preferredContact: row.preferredContact,
+        bookingCount: row._count.bookings,
+        paymentCount: row._count.payments,
+        createdAt: row.createdAt.toISOString(),
+      }))}
+      initialPayments={payments.map((row) => ({
+        id: row.id,
+        publicId: row.publicId,
+        amountCents: row.amountCents,
+        type: row.type,
+        status: row.status,
+        note: row.note,
+        bookingPublicId: row.booking.publicId,
+        customerName: row.customer?.name ?? row.booking.customerName,
+        createdAt: row.createdAt.toISOString(),
+      }))}
     />
   );
 }

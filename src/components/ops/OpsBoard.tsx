@@ -6,6 +6,7 @@ import { useState } from "react";
 import { BOOKING_STATUSES, statusLabel } from "@/lib/booking";
 import { contractorStatusLabel, type PublicContractor } from "@/lib/contractor";
 import { formatUsd } from "@/lib/money";
+import { paymentStatusLabel, paymentTypeLabel } from "@/lib/payments";
 import { getTrade } from "@/lib/trades";
 
 export type OpsBooking = {
@@ -35,17 +36,44 @@ export type OpsContractor = PublicContractor & {
   createdAt: string;
 };
 
+export type OpsCustomer = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  preferredContact: string;
+  bookingCount: number;
+  paymentCount: number;
+  createdAt: string;
+};
+
+export type OpsPayment = {
+  id: string;
+  publicId: string;
+  amountCents: number;
+  type: string;
+  status: string;
+  note: string | null;
+  bookingPublicId: string;
+  customerName: string;
+  createdAt: string;
+};
+
 export function OpsBoard({
   initialBookings,
   initialContractors,
   contractorNames,
+  initialCustomers,
+  initialPayments,
 }: {
   initialBookings: OpsBooking[];
   initialContractors: OpsContractor[];
   contractorNames: Record<string, string>;
+  initialCustomers: OpsCustomer[];
+  initialPayments: OpsPayment[];
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"jobs" | "contractors">("jobs");
+  const [tab, setTab] = useState<"jobs" | "contractors" | "customers" | "payments">("jobs");
   const [filter, setFilter] = useState("ALL");
   const [appFilter, setAppFilter] = useState("ALL");
   const [note, setNote] = useState<Record<string, string>>({});
@@ -79,6 +107,19 @@ export function OpsBoard({
     router.refresh();
   }
 
+  async function updatePayment(id: string, status: string) {
+    const response = await fetch(`/api/ops/payments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      setError("Could not update that TOD payment.");
+      return;
+    }
+    router.refresh();
+  }
+
   const visibleJobs = initialBookings.filter((row) => filter === "ALL" || row.status === filter);
   const visibleApps = initialContractors.filter((row) => appFilter === "ALL" || row.status === appFilter);
 
@@ -107,6 +148,24 @@ export function OpsBoard({
             }`}
           >
             Contractors ({initialContractors.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("customers")}
+            className={`h-10 rounded-full px-4 text-sm font-semibold ${
+              tab === "customers" ? "bg-navy text-cream" : "border border-line"
+            }`}
+          >
+            Customers ({initialCustomers.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("payments")}
+            className={`h-10 rounded-full px-4 text-sm font-semibold ${
+              tab === "payments" ? "bg-navy text-cream" : "border border-line"
+            }`}
+          >
+            TOD pay ({initialPayments.length})
           </button>
         </div>
       </div>
@@ -196,7 +255,7 @@ export function OpsBoard({
             </div>
           )}
         </>
-      ) : (
+      ) : tab === "contractors" ? (
         <>
           <label className="mt-6 block text-sm">
             <span className="mr-2 text-muted">Application</span>
@@ -272,6 +331,66 @@ export function OpsBoard({
             </div>
           )}
         </>
+      ) : tab === "customers" ? (
+        <div className="mt-8 space-y-3">
+          <p className="text-sm text-muted">
+            Private lookup only. Do not publish customer addresses. Contractors see job-site details
+            on assigned tickets, not this list.
+          </p>
+          {initialCustomers.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
+              No customer profiles yet. They are created on first booking.
+            </p>
+          ) : (
+            initialCustomers.map((row) => (
+              <article key={row.id} className="rounded-2xl border border-line bg-paper p-5">
+                <h2 className="font-display text-2xl text-navy">{row.name}</h2>
+                <p className="text-sm text-muted">
+                  {row.email} · {row.phone} · prefers {row.preferredContact.toLowerCase()}
+                </p>
+                <p className="mt-2 text-sm text-navy">
+                  {row.bookingCount} jobs · {row.paymentCount} TOD payments
+                </p>
+              </article>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="mt-8 space-y-3">
+          <p className="text-sm text-muted">
+            Marketplace ledger: customer paid Trades on Demand. Mark refunds here. No contractor
+            card data.
+          </p>
+          {initialPayments.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
+              No TOD payments yet.
+            </p>
+          ) : (
+            initialPayments.map((row) => (
+              <article key={row.id} className="flex flex-col gap-3 rounded-2xl border border-line bg-paper p-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-mono text-xs text-muted">{row.publicId}</p>
+                  <p className="font-display text-xl text-navy">
+                    {formatUsd(row.amountCents)} · {paymentTypeLabel(row.type)}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {row.bookingPublicId} · {row.customerName}
+                  </p>
+                </div>
+                <select
+                  key={`${row.id}-${row.status}`}
+                  defaultValue={row.status}
+                  onChange={(event) => updatePayment(row.id, event.target.value)}
+                  className="h-11 rounded-xl border border-line bg-white px-3 text-sm"
+                >
+                  <option value="PENDING">{paymentStatusLabel("PENDING")}</option>
+                  <option value="PAID">{paymentStatusLabel("PAID")}</option>
+                  <option value="REFUNDED">{paymentStatusLabel("REFUNDED")}</option>
+                </select>
+              </article>
+            ))
+          )}
+        </div>
       )}
     </div>
   );
