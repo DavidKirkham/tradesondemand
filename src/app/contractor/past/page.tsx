@@ -1,16 +1,14 @@
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
 import { ContractorJobCard } from "@/components/contractor-app/ContractorJobCard";
-import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { isPastContractorJob } from "@/lib/contractor-app";
-import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
+import { requireApprovedContractor } from "@/lib/contractor-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContractorPastJobsPage() {
-  const contractor = await getApprovedContractorFromCookie();
-  if (!contractor) return <ContractorLogin />;
+  const contractor = await requireApprovedContractor("/contractor/past");
 
   const rows = await prisma.booking.findMany({
     where: { contractorId: contractor.id },

@@ -90,7 +90,8 @@ export function ContractorProfileForm({
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
-        Email and phone are also how you sign in. Change them here if the shop contact changed.
+        Email, phone, and shop ID can identify you at sign-in. You still need your password.
+        Change contact details here if the shop number or inbox changed.
       </p>
       <Field
         label="Contact name"

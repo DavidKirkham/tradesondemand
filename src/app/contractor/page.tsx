@@ -4,13 +4,31 @@ import { ContractorLogin } from "@/components/contractor-app/ContractorLogin";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { isOpenContractorJob, jobFitsContractor } from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
+import { isSafeContractorNextPath } from "@/lib/contractor-paths";
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContractorHomePage() {
+export default async function ContractorHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; setup?: string; notice?: string }>;
+}) {
+  const params = await searchParams;
   const contractor = await getApprovedContractorFromCookie();
-  if (!contractor) return <ContractorLogin />;
+  if (!contractor) {
+    return (
+      <ContractorLogin
+        nextPath={params.next}
+        initialMode={params.setup === "1" ? "setup" : "signin"}
+        notice={params.notice}
+      />
+    );
+  }
+  if (isSafeContractorNextPath(params.next) && params.next !== "/contractor") {
+    redirect(params.next);
+  }
 
   const [assignedRows, open] = await Promise.all([
     prisma.booking.findMany({

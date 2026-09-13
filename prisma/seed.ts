@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hashContractorPassword } from "../src/lib/contractor-password";
 
 const prisma = new PrismaClient();
 
@@ -45,9 +46,11 @@ async function main() {
     });
   }
 
+  const demoPasswordHash = await hashContractorPassword("waldo-demo-10");
+
   const contractor = await prisma.contractor.upsert({
     where: { slug: "waldo-heat-demo" },
-    update: { loginToken: "tod-waldo-demo" },
+    update: { loginToken: "tod-waldo-demo", passwordHash: demoPasswordHash, sessionToken: null },
     create: {
       publicId: "PRO-DEMO01",
       slug: "waldo-heat-demo",
@@ -56,6 +59,7 @@ async function main() {
       phone: "8165160735",
       email: "morgan@waldoheat.example",
       loginToken: "tod-waldo-demo",
+      passwordHash: demoPasswordHash,
       tradesJson: JSON.stringify(["plumbing", "hvac"]),
       licenseNumber: "MO-HVAC-8812",
       licenseType: "Mechanical contractor",

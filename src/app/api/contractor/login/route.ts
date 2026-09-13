@@ -1,47 +1,54 @@
 import { NextResponse } from "next/server";
-import { createContractorLoginToken } from "@/lib/contractor";
-import { contractorLoginBlockReason } from "@/lib/contractor-app";
-import { contractorCookieOptions } from "@/lib/contractor-auth";
-import { isValidEmail, isValidUsPhone } from "@/lib/phone";
+import { prismaFailureResponse } from "@/lib/api-errors";
+import { contractorCookieOptions, issueContractorSession } from "@/lib/contractor-auth";
+import {
+  contractorPasswordLoginDecision,
+  contractorPasswordMatches,
+  contractorWhereIdentifier,
+  parseContractorIdentifier,
+} from "@/lib/contractor-password";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  let body: { email?: string; phone?: string };
+  let body: { identifier?: string; email?: string; password?: string };
   try {
-    body = (await request.json()) as { email?: string; phone?: string };
+    body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "JSON required." }, { status: 400 });
   }
 
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const phoneRaw = String(body.phone ?? "");
-  if (!isValidEmail(email) || !isValidUsPhone(phoneRaw)) {
-    return NextResponse.json({ error: "Enter the email and phone on your application." }, { status: 400 });
-  }
-  const phone = phoneRaw.replace(/\D/g, "").slice(-10);
-
-  const contractor = await prisma.contractor.findFirst({
-    where: { email, phone },
-  });
-  if (!contractor) {
-    return NextResponse.json({ error: "No approved contractor matches that email and phone." }, { status: 404 });
+  const identifier = parseContractorIdentifier(String(body.identifier ?? body.email ?? ""));
+  const password = String(body.password ?? "");
+  if (!identifier || !password) {
+    return NextResponse.json({ error: "Enter your shop email, phone, or ID and your password." }, { status: 400 });
   }
 
-  const blocked = contractorLoginBlockReason(contractor.status);
-  if (blocked) {
-    return NextResponse.json({ error: blocked }, { status: 403 });
-  }
+  try {
+    const contractor = await prisma.contractor.findFirst({
+      where: contractorWhereIdentifier(identifier),
+    });
+    const passwordOk = await contractorPasswordMatches(password, contractor?.passwordHash ?? null);
+    const decision = contractorPasswordLoginDecision({
+      contractor: contractor
+        ? { status: contractor.status, passwordHash: contractor.passwordHash }
+        : null,
+      passwordOk,
+    });
+    if (!decision.ok) {
+      return NextResponse.json({ error: decision.error }, { status: decision.status });
+    }
+    if (!contractor) {
+      return NextResponse.json({ error: "Sign-in failed." }, { status: 401 });
+    }
 
-  let loginToken = contractor.loginToken;
-  if (!loginToken) {
-    loginToken = createContractorLoginToken();
-    await prisma.contractor.update({ where: { id: contractor.id }, data: { loginToken } });
+    const sessionToken = await issueContractorSession(contractor.id);
+    const response = NextResponse.json({ ok: true });
+    const cookie = contractorCookieOptions(sessionToken);
+    response.cookies.set(cookie.name, cookie.value, cookie);
+    return response;
+  } catch (error) {
+    return prismaFailureResponse(error, "Could not sign in. Try again.");
   }
-
-  const response = NextResponse.json({ ok: true });
-  const cookie = contractorCookieOptions(loginToken);
-  response.cookies.set(cookie.name, cookie.value, cookie);
-  return response;
 }

@@ -100,6 +100,8 @@ Prisma expects these folders, in order:
 | `prisma/migrations/20260913120000_init` | `Booking`, `StatusEvent`, `Contractor`, `Customer`, `Payment` (Contractor **without** `loginToken`) |
 | `prisma/migrations/20260913140000_stripe_checkout_ids` | `Payment.stripeCheckoutSessionId`, `Payment.stripePaymentIntentId` |
 | `prisma/migrations/20260913160000_contractor_login_token` | `Contractor.loginToken` `TEXT NOT NULL UNIQUE` (backfill, then unique index) |
+| `prisma/migrations/20260913180000_customer_sms` | Optional booking SMS columns |
+| `prisma/migrations/20260913200000_contractor_password` | `Contractor.passwordHash`, `Contractor.sessionToken` (nullable unique) |
 
 Exact production command (`prisma migrate deploy` via the env wrapper):
 
@@ -170,7 +172,7 @@ Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variabl
 3. Pick an **approved** shop licensed for that job’s trade → **Assign**. Reassignment shows an in-page confirm.
 4. Or open `/admin/contractors/<id>` and use **Push a job to this shop**.
 5. The booking gets `contractorId`, status **Dispatched** if it was still Received, and a StatusEvent like `Assigned by admin to Waldo Heat & Pipe`.
-6. That shop signs in at `/contractor` (email + phone, or magic link) and sees the ticket under **Assigned**.
+6. That shop signs in at `/contractor` (email / phone / shop ID **and password**) and sees the ticket under **Assigned**.
 
 Pending / rejected shops never appear in the picker. Cancelled jobs cannot be assigned.
 
@@ -180,26 +182,36 @@ Mobile-first app for **approved** licensed partners. Pending and rejected applic
 
 1. Open [https://todkc.com/contractor](https://todkc.com/contractor) (or `/contractor` on this deploy) on a phone.  
 2. iPhone: Share → **Add to Home Screen**. Android: Chrome menu → **Install app** / Add to Home Screen.  
-3. Sign in with the **email and phone from the contractor application**. Or open the magic link `/contractor/s/<loginToken>` (issued when the shop is created).
+3. Sign in with **email, phone, or shop ID (`PRO-…`) plus a password**. Magic link `/contractor/s/<loginToken>` is only a one-time set-password invite (or a reminder to use the password). It does not stay a passwordless login.
+
+**Existing approved shops (no password yet)**
+
+1. First visit: on `/contractor` tap **Set a password**, enter the application email + phone, choose a 10+ character password.  
+2. Or open the invite `/contractor/s/<loginToken>` (shown on Admin → Subcontractor while no password is set) and choose a password.  
+3. After that, every visit is identifier + password. Session cookie is a rotating `sessionToken`, not the invite token.  
+4. **Forgot password:** there is no email/SMS reset in this release. Dispatch uses **Admin → Subcontractor → Issue set-password link** (clears the hash and issues a new invite) or **Set password** (temporary password to tell the shop).  
+5. Shops change their own password on **Profile**.
 
 **Seeded test shop (local `npx prisma db seed`):**
 
 - Email: `morgan@waldoheat.example`  
 - Phone: `8165160735`  
-- Magic link: `/contractor/s/tod-waldo-demo`  
+- Shop ID: `PRO-DEMO01`  
+- Password: `waldo-demo-10`  
+- Invite (set-password only if the hash is cleared): `/contractor/s/tod-waldo-demo`  
 
 A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
 
 **How to test the contractor PWA**
 
 1. Seed: `npm run db:seed` (needs Postgres).  
-2. Open `/contractor` (or `/contractor/s/tod-waldo-demo`).  
-3. Sign in with the Waldo email + phone above.  
+2. Open `/contractor` (logged-out `/contractor/jobs/…` redirects here).  
+3. Sign in with the Waldo email (or `PRO-DEMO01`) and `waldo-demo-10`.  
 4. **Jobs** — current assigned (`TOD-DEMO01`) + available (`TOD-OPEN01`). Accept + En route / On site / Done + ETA text.  
 5. **Past** — completed `TOD-DONE01` and cancelled `TOD-CXL01`.  
 6. **SMS** — text only on jobs you own; 555 numbers skip; missing Twilio still saves the note.  
 7. **Pay** — per-job pending/paid/refunded from `Payment` rows + history. Copy states payouts are via TOD.  
-8. **Profile** — edit contact, coverage, rates, bio → Save. Sign-in email/phone update if you change them.
+8. **Profile** — edit contact, coverage, rates, bio → Save. Change password with the current password.
 
 Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancelled), **SMS** (text customers on jobs you own), job detail (**Accept**, En route / On site / Done, arrival text), **Profile** (business contact, coverage, rates, bio), and **Pay** (per-job TOD payment status + Payment history). Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site. Payouts are via TOD; the Pay page does not invent Stripe Connect.
 

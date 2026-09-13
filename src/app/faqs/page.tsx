@@ -41,7 +41,7 @@ const FAQS = [
   },
   {
     q: "How do licensed contractors join?",
-    a: "Apply at /contractors/signup (or /join). We need your license (MO or KS), insurance confirmation, KC metro coverage, and rates. Admin approves or rejects. Approved shops use the contractor PWA at /contractor (Add to Home Screen) with the email and phone on the application.",
+    a: "Apply at /contractors/signup (or /join). We need your license (MO or KS), insurance confirmation, KC metro coverage, and rates. Admin approves or rejects. Approved shops use the contractor PWA at /contractor (Add to Home Screen) with email or shop ID plus a password. First visit: set a password with the application email and phone, or the invite link from dispatch.",
   },
   {
     q: "Do you have a contractor app?",
