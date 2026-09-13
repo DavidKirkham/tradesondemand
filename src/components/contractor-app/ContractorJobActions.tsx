@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CONTRACTOR_JOB_STATUSES, contractorStatusActionLabel } from "@/lib/contractor-app";
+import { parseResponseJson } from "@/lib/http";
 
 export function ContractorJobActions({
   id,
@@ -34,10 +35,7 @@ export function ContractorJobActions({
         eta: body.eta?.trim() || undefined,
       }),
     });
-    const payload = (await response.json()) as {
-      error?: string;
-      sms?: { status?: string };
-    };
+    const payload = await parseResponseJson<{ error?: string; sms?: { status?: string } }>(response);
     setSaving(false);
     if (!response.ok) {
       setMessage(payload.error || "Could not update job.");

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prismaFailureResponse } from "@/lib/api-errors";
 import { jobFitsContractor, isContractorJobStatus } from "@/lib/contractor-app";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +24,18 @@ export async function PATCH(
     return NextResponse.json({ error: "JSON required." }, { status: 400 });
   }
 
+  try {
+    return await applyContractorJobPatch(id, contractor, body);
+  } catch (error) {
+    return prismaFailureResponse(error, "Could not update that job. Try again.");
+  }
+}
+
+async function applyContractorJobPatch(
+  id: string,
+  contractor: { id: string; businessName: string },
+  body: { status?: string; note?: string; claim?: boolean; eta?: string },
+) {
   const booking = await prisma.booking.findUnique({ where: { id } });
   if (!booking) return NextResponse.json({ error: "Job not found." }, { status: 404 });
 
