@@ -2,19 +2,14 @@ import { NextResponse } from "next/server";
 import { prismaFailureResponse } from "@/lib/api-errors";
 import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
 import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
-import { createPaymentPublicId } from "@/lib/customer";
 import {
   contractorCanInvoiceJob,
-  createInvoicePublicId,
   depositCreditCents,
-  invoiceIsLocked,
-  invoicePaymentNote,
-  invoiceStatusAfterSend,
-  persistableInvoiceMoney,
   totalsFromLines,
   validateInvoicePayload,
 } from "@/lib/invoice";
 import { isMissingInvoiceMarkupColumn, isMissingInvoiceModel } from "@/lib/invoice-columns";
+import { invoiceLockedReason, persistInvoiceEdits } from "@/lib/invoice-persist";
 import { prisma } from "@/lib/prisma";
 import { appOriginFromRequest } from "@/lib/stripe";
 import { buildInvoiceSms, sendCustomerSms } from "@/lib/sms";
@@ -92,11 +87,9 @@ async function saveContractorInvoice(
     where: { bookingId: id },
     include: { payment: true },
   });
-  if (existing && invoiceIsLocked(existing.status)) {
-    return NextResponse.json({ error: "This invoice is already paid to TOD." }, { status: 400 });
-  }
-  if (existing?.payment?.status === "PAID") {
-    return NextResponse.json({ error: "This invoice is already paid to TOD." }, { status: 400 });
+  const locked = invoiceLockedReason(existing);
+  if (locked) {
+    return NextResponse.json({ error: locked }, { status: 400 });
   }
 
   const send = Boolean(body.send);
@@ -104,97 +97,17 @@ async function saveContractorInvoice(
   const publish = send || alreadySent;
   const depositPaidCents = depositCreditCents(booking.payments, existing?.paymentId);
   const totals = totalsFromLines(parsed.lines, depositPaidCents);
-  const money = persistableInvoiceMoney(totals, omitMarkupColumns);
-  const nextStatus = publish ? invoiceStatusAfterSend(totals.amountDueCents) : "DRAFT";
-  const now = new Date();
 
   const invoice = await prisma.$transaction(async (tx) => {
-    const saved = existing
-      ? await tx.invoice.update({
-          where: { id: existing.id },
-          data: {
-            contractorId: contractor.id,
-            status: nextStatus,
-            ...money,
-            note: parsed.note,
-            sentAt: publish ? (existing.sentAt ?? now) : existing.sentAt,
-            paidAt: nextStatus === "PAID" ? (existing.paidAt ?? now) : null,
-            lines: { deleteMany: {} },
-          },
-        })
-      : await tx.invoice.create({
-          data: {
-            publicId: createInvoicePublicId(),
-            bookingId: booking.id,
-            contractorId: contractor.id,
-            status: nextStatus,
-            ...money,
-            note: parsed.note,
-            sentAt: publish ? now : null,
-            paidAt: nextStatus === "PAID" ? now : null,
-          },
-        });
-
-    await tx.invoiceLine.createMany({
-      data: parsed.lines.map((line, index) => ({
-        invoiceId: saved.id,
-        kind: line.kind,
-        description: line.description,
-        quantity: line.quantity,
-        unitCents: line.unitCents,
-        amountCents: line.amountCents,
-        sortOrder: index,
-      })),
-    });
-
-    let paymentId = existing?.paymentId ?? null;
-    if (publish && totals.amountDueCents > 0) {
-      const paymentNote = invoicePaymentNote({
-        publicId: saved.publicId,
-        depositPaidCents: totals.depositPaidCents,
-        subtotalCents: totals.subtotalCents,
-        customerSubtotalCents: totals.customerSubtotalCents,
-      });
-      if (existing?.payment && existing.payment.status === "PENDING") {
-        const amountChanged = existing.payment.amountCents !== totals.amountDueCents;
-        await tx.payment.update({
-          where: { id: existing.payment.id },
-          data: {
-            amountCents: totals.amountDueCents,
-            note: paymentNote,
-            ...(amountChanged
-              ? { stripeCheckoutSessionId: null, stripePaymentIntentId: null }
-              : {}),
-          },
-        });
-        paymentId = existing.payment.id;
-      } else {
-        const payment = await tx.payment.create({
-          data: {
-            publicId: createPaymentPublicId(),
-            bookingId: booking.id,
-            customerId: booking.customerId,
-            amountCents: totals.amountDueCents,
-            type: "BALANCE",
-            status: "PENDING",
-            note: paymentNote,
-          },
-        });
-        paymentId = payment.id;
-      }
-    } else if (publish && existing?.payment && existing.payment.status === "PENDING") {
-      await tx.invoice.update({
-        where: { id: saved.id },
-        data: { paymentId: null },
-      });
-      await tx.payment.delete({ where: { id: existing.payment.id } });
-      paymentId = null;
-    }
-
-    const updated = await tx.invoice.update({
-      where: { id: saved.id },
-      data: { paymentId },
-      include: { lines: { orderBy: { sortOrder: "asc" } }, payment: true },
+    const updated = await persistInvoiceEdits(tx, {
+      booking,
+      existing,
+      contractorId: contractor.id,
+      lines: parsed.lines,
+      totals,
+      note: parsed.note,
+      publish,
+      omitMarkupColumns,
     });
 
     if (publish && booking.status !== "COMPLETED") {

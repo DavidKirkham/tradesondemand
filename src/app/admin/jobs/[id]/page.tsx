@@ -2,15 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminAssignContractor } from "@/components/admin/AdminAssignContractor";
 import { AdminGate } from "@/components/admin/AdminGate";
+import { AdminInvoiceSection } from "@/components/admin/AdminInvoiceSection";
 import { AdminJobDelete } from "@/components/admin/AdminJobDelete";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { blockingJobPayments } from "@/lib/admin-job-delete";
 import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
-import { isOpsAuthenticated } from "@/lib/ops-auth";
-import { InvoiceBreakdown } from "@/components/invoice/InvoiceBreakdown";
+import { depositCreditCents, toInvoiceLineDrafts } from "@/lib/invoice";
 import { loadBookingInvoice } from "@/lib/invoice-columns";
+import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
@@ -147,25 +148,23 @@ async function JobDetail({ id }: { id: string }) {
       </section>
 
       {invoice ? (
-        <section className="rounded-2xl border border-line bg-paper p-5">
-          <h2 className="font-display text-xl text-navy">Invoice</h2>
-          <div className="mt-3">
-            <InvoiceBreakdown
-              publicId={invoice.publicId}
-              status={invoice.status}
-              lines={invoice.lines}
-              laborCents={invoice.laborCents}
-              materialsCents={invoice.materialsCents}
-              subtotalCents={invoice.subtotalCents}
-              customerSubtotalCents={invoice.customerSubtotalCents}
-              markupCents={invoice.markupCents}
-              depositPaidCents={invoice.depositPaidCents}
-              amountDueCents={invoice.amountDueCents}
-              note={invoice.note}
-              variant="admin"
-            />
-          </div>
-        </section>
+        <AdminInvoiceSection
+          jobId={job.id}
+          depositPaidCents={depositCreditCents(job.payments, invoice.paymentId)}
+          invoice={{
+            publicId: invoice.publicId,
+            status: invoice.status,
+            note: invoice.note,
+            laborCents: invoice.laborCents,
+            materialsCents: invoice.materialsCents,
+            subtotalCents: invoice.subtotalCents,
+            customerSubtotalCents: invoice.customerSubtotalCents,
+            markupCents: invoice.markupCents,
+            depositPaidCents: invoice.depositPaidCents,
+            amountDueCents: invoice.amountDueCents,
+            lines: toInvoiceLineDrafts(invoice.lines),
+          }}
+        />
       ) : null}
 
       <section className="rounded-2xl border border-line bg-paper p-5">

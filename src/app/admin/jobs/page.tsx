@@ -9,6 +9,9 @@ import { BOOKING_STATUSES, statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
+import { invoiceStatusLabel } from "@/lib/invoice";
+import { loadBookingInvoiceSummaries, type BookingInvoiceSummary } from "@/lib/invoice-columns";
+import { formatUsd } from "@/lib/money";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
@@ -66,6 +69,7 @@ async function JobsList({ q, status, deleted }: { q: string; status: string; del
     publicId: row.publicId,
     trades: parseTradesJson(row.tradesJson),
   }));
+  const invoices = await loadBookingInvoiceSummaries(jobs.map((job) => job.id));
 
   return (
     <div>
@@ -127,6 +131,7 @@ async function JobsList({ q, status, deleted }: { q: string; status: string; del
             contractorId={job.contractorId}
             contractorName={job.contractor?.businessName ?? null}
             contractors={contractors}
+            invoice={invoices.get(job.id) ?? null}
           />
         ))}
       </div>
@@ -140,6 +145,7 @@ async function JobsList({ q, status, deleted }: { q: string; status: string; del
                 <th className="px-4 py-3 font-medium">Subcontractor</th>
                 <th className="px-4 py-3 font-medium">Assign</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Balance</th>
                 <th className="px-4 py-3 font-medium">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -195,6 +201,9 @@ async function JobsList({ q, status, deleted }: { q: string; status: string; del
                     <AdminJobStatus id={job.id} status={job.status} />
                   </td>
                   <td className="px-4 py-3">
+                    <JobBalanceLink jobId={job.id} invoice={invoices.get(job.id)} />
+                  </td>
+                  <td className="px-4 py-3">
                     <Link
                       href={`/admin/jobs/${job.id}#delete`}
                       className="text-sm font-semibold text-danger hover:underline"
@@ -210,5 +219,23 @@ async function JobsList({ q, status, deleted }: { q: string; status: string; del
         </>
       )}
     </div>
+  );
+}
+
+function JobBalanceLink({
+  jobId,
+  invoice,
+}: {
+  jobId: string;
+  invoice?: BookingInvoiceSummary;
+}) {
+  if (!invoice) return <span className="text-muted">—</span>;
+  return (
+    <Link href={`/admin/jobs/${jobId}#invoice`} className="font-semibold text-ember hover:underline">
+      {formatUsd(invoice.amountDueCents)}
+      <span className="mt-0.5 block text-xs font-normal text-muted">
+        {invoiceStatusLabel(invoice.status)} · customer
+      </span>
+    </Link>
   );
 }

@@ -21,6 +21,29 @@ export function isMissingInvoiceMarkupColumn(error: unknown): boolean {
 
 export type BookingInvoice = Awaited<ReturnType<typeof loadBookingInvoice>>;
 
+export type BookingInvoiceSummary = {
+  bookingId: string;
+  publicId: string;
+  status: string;
+  amountDueCents: number;
+};
+
+export async function loadBookingInvoiceSummaries(bookingIds: string[]) {
+  const byBooking = new Map<string, BookingInvoiceSummary>();
+  if (bookingIds.length === 0) return byBooking;
+  try {
+    const rows = await prisma.invoice.findMany({
+      where: { bookingId: { in: bookingIds } },
+      select: { bookingId: true, publicId: true, status: true, amountDueCents: true },
+    });
+    for (const row of rows) byBooking.set(row.bookingId, row);
+    return byBooking;
+  } catch (error) {
+    if (!isMissingInvoiceModel(error)) throw error;
+    return byBooking;
+  }
+}
+
 export async function loadBookingInvoice(bookingId: string) {
   try {
     return await prisma.invoice.findUnique({
