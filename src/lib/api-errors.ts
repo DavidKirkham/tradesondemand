@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export const SCHEMA_MIGRATE_MESSAGE =
-  "The production database is missing tables or columns this app expects (often Contractor.loginToken). Apply Prisma migrations: npm run db:migrate with DATABASE_URL and DATABASE_URL_UNPOOLED.";
+  "The production database is missing tables or columns this app expects (often Contractor.loginToken or Customer.passwordHash). Apply Prisma migrations: npm run db:migrate with DATABASE_URL and DATABASE_URL_UNPOOLED.";
 
 export const DATABASE_URL_MESSAGE =
   "DATABASE_URL is not set on the server. Add a Neon PostgreSQL URL on Vercel, then run npm run db:migrate.";

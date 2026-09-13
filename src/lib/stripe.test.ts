@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { platformCheckoutReturnUrls } from "./stripe-checkout";
 import {
   getStripe,
   getStripePublishableKey,
@@ -31,5 +32,24 @@ describe("stripe env helpers", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_xxx";
     resetStripeClientForTests();
     expect(isStripeCheckoutConfigured()).toBe(false);
+  });
+});
+
+describe("platformCheckoutReturnUrls", () => {
+  it("returns booking success/retry URLs by default", () => {
+    expect(platformCheckoutReturnUrls("https://todkc.com", "tok_abc")).toEqual({
+      success_url: "https://todkc.com/book/success?token=tok_abc&session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://todkc.com/book/retry?token=tok_abc",
+    });
+  });
+
+  it("returns customer portal job URLs when paying from /account", () => {
+    expect(
+      platformCheckoutReturnUrls("https://todkc.com", "tok_abc", { publicId: "TOD-DEMO01" }),
+    ).toEqual({
+      success_url:
+        "https://todkc.com/account/jobs/TOD-DEMO01?paid=1&session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://todkc.com/account/jobs/TOD-DEMO01?canceled=1",
+    });
   });
 });

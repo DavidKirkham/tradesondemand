@@ -11,7 +11,7 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 - **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` if needed; the UI works without env setup.
 - **Licensed contractors.** Partners apply at `/contractors/signup`. Admin approves/rejects at `/admin/contractors`. Approved shops get a public profile and can be chosen during booking.
 - **Marketplace payments.** Customer → **Trades on Demand / Trademark Walls** (Stripe Checkout) → contractor payout later. No Connect transfers in Phase 1. No pay-the-pro-directly flow.
-- **v1 surfaces.** Customer booking (including contractor pick), private customer profile, job status, contractor directory/profiles, `/admin` for clients + subcontractors + jobs, `/contractor` PWA for approved partners.
+- **v1 surfaces.** Customer booking (including contractor pick), password-protected `/account` portal (jobs + TOD pay), job status, contractor directory/profiles, `/admin` for clients + subcontractors + jobs, `/contractor` PWA for approved partners.
 
 ## Core booking loop
 
@@ -102,6 +102,7 @@ Prisma expects these folders, in order:
 | `prisma/migrations/20260913160000_contractor_login_token` | `Contractor.loginToken` `TEXT NOT NULL UNIQUE` (backfill, then unique index) |
 | `prisma/migrations/20260913180000_customer_sms` | Optional booking SMS columns |
 | `prisma/migrations/20260913200000_contractor_password` | `Contractor.passwordHash`, `Contractor.sessionToken` (nullable unique) |
+| `prisma/migrations/20260913220000_customer_password` | `Customer.passwordHash`, `Customer.sessionToken`, SMS reset code columns |
 
 Exact production command (`prisma migrate deploy` via the env wrapper):
 
@@ -175,6 +176,26 @@ Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variabl
 6. That shop signs in at `/contractor` (email / phone / shop ID **and password**) and sees the ticket under **Assigned**.
 
 Pending / rejected shops never appear in the picker. Cancelled jobs cannot be assigned.
+
+### Customer portal (`/account`)
+
+Password-protected jobs and payments for homeowners and property managers. Cookie is `tod_customer_session` (rotating `Customer.sessionToken`). It is **not** the contractor cookie (`tod_contractor`) or the admin cookie.
+
+1. Open [https://todkc.com/account](https://todkc.com/account) — logged-out visits redirect to `/account/login`.
+2. **New customer:** Create an account (name, email, phone, 10+ character password) or book first — booking signs you into the portal and you can set a password on Profile.
+3. **Existing customer (booked before passwords):** **Claim my jobs** with the booking email + phone, then choose a password. Or open `/account/<customer.token>` / `/account/s/<token>` (set-password only). After a password exists, that link cannot sign anyone in.
+4. **Forgot password:** `/account/forgot` texts a 6-digit code via Twilio to the phone on the Customer record. Email reset is not wired. 555 test numbers cannot receive SMS — call dispatch or use the seed password below.
+5. **Jobs:** current vs past (completed/cancelled), status, dates, trade, booking IDs, owed vs paid.
+6. **Pay:** pending deposit/balance opens the same TOD Stripe Checkout as booking. Success returns to the job. Webhook is still the source of truth for paid.
+
+**Seeded test customer (local `npx prisma db seed`):**
+
+| | Email | Phone | Password | Notes |
+| --- | --- | --- | --- | --- |
+| Signed-in demo | `riley@example.com` | `8165550144` | `riley-demo-10` | Jobs `TOD-DEMO01` (pending deposit), `TOD-OPEN01`, `TOD-DONE01`, `TOD-CXL01` |
+| Claim path | `jordan@example.com` | `8165550133` | *(none until claimed)* | Job `TOD-CLAIM01` + pending `PAY-CLAIM01`. Invite: `/account/s/demo-claim-customer-kc` |
+
+Production **must** apply `20260913220000_customer_password` (`npm run db:migrate`) or login/register will fail against a missing column.
 
 ### Contractor PWA (`/contractor`)
 
@@ -262,7 +283,8 @@ npx prisma db seed
 | `/contractors` | Approved contractor directory |
 | `/contractors/[slug]` | Public profile (approved only; slug, public ID, or id) |
 | `/contractors/signup` `/join` | Licensed contractor application |
-| `/account` `/account/[token]` | Private customer profile (cookie or magic link after first book) |
+| `/account` `/account/login` `/account/forgot` `/account/jobs/[id]` `/account/profile` | **Customer portal** — password login, jobs past/present, TOD Checkout |
+| `/account/[token]` `/account/s/[token]` | One-time set-password invite (not a passwordless session) |
 | `/status` `/status/[token]` | Customer job status |
 | `/contractor` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — current jobs, past jobs, SMS, TOD payment status, profile |
 | `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit clients and subcontractors; **assign jobs** (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
@@ -271,6 +293,7 @@ npx prisma db seed
 | `/api/stripe/webhook` | Stripe signature-verified payment updates |
 | `/api/contractors` | Public list (approved) + signup POST |
 | `/api/status/[token]` | Lookup by job ID or token |
+| `/api/account/*` | Customer portal session (`tod_customer_session`, distinct from contractor/admin) |
 | `/api/contractor/*` | Approved-contractor session (separate cookie from admin/customers) |
 | `/api/admin/*` | Authenticated admin login + client/contractor/job edits |
 | `/api/ops/*` | Same cookie auth; older ops endpoints still work |

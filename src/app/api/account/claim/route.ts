@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { customerCookieOptions } from "@/lib/customer-auth";
+import { customerMagicLinkIntent } from "@/lib/customer-password";
+import { customerSetupCookieOptions } from "@/lib/customer-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -7,11 +8,19 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
   const customer = token ? await prisma.customer.findUnique({ where: { token } }) : null;
-  const destination = new URL("/account", request.url);
-  const response = NextResponse.redirect(destination);
-  if (customer) {
-    const cookie = customerCookieOptions(customer.token);
+  const intent = customerMagicLinkIntent(customer ? { passwordHash: customer.passwordHash } : null);
+
+  if (intent === "setup" && customer) {
+    const destination = new URL("/account/login?setup=1", request.url);
+    const response = NextResponse.redirect(destination);
+    const cookie = customerSetupCookieOptions(customer.token);
     response.cookies.set(cookie.name, cookie.value, cookie);
+    return response;
   }
-  return response;
+
+  const destination = new URL(
+    intent === "signin" ? "/account/login?notice=password" : "/account/login",
+    request.url,
+  );
+  return NextResponse.redirect(destination);
 }

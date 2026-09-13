@@ -3,6 +3,24 @@ import { appOriginFromRequest, getStripe } from "./stripe";
 
 export type CheckoutKind = "deposit" | "minimum" | "balance";
 
+export function platformCheckoutReturnUrls(
+  origin: string,
+  bookingToken: string,
+  portal?: { publicId: string },
+): { success_url: string; cancel_url: string } {
+  if (portal) {
+    const job = `/account/jobs/${encodeURIComponent(portal.publicId)}`;
+    return {
+      success_url: `${origin}${job}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}${job}?canceled=1`,
+    };
+  }
+  return {
+    success_url: `${origin}/book/success?token=${encodeURIComponent(bookingToken)}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/book/retry?token=${encodeURIComponent(bookingToken)}`,
+  };
+}
+
 export async function createPlatformCheckoutSession(input: {
   request: Request;
   bookingId: string;
@@ -13,6 +31,7 @@ export async function createPlatformCheckoutSession(input: {
   amountCents: number;
   paymentType: CheckoutKind;
   description: string;
+  returnToPortal?: boolean;
 }): Promise<{ url: string; sessionId: string } | { error: string }> {
   const stripe = getStripe();
   if (!stripe) {
@@ -23,6 +42,11 @@ export async function createPlatformCheckoutSession(input: {
   }
 
   const origin = appOriginFromRequest(input.request);
+  const returns = platformCheckoutReturnUrls(
+    origin,
+    input.bookingToken,
+    input.returnToPortal ? { publicId: input.bookingPublicId } : undefined,
+  );
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     customer_email: input.customerEmail,
@@ -40,8 +64,8 @@ export async function createPlatformCheckoutSession(input: {
         },
       },
     ],
-    success_url: `${origin}/book/success?token=${encodeURIComponent(input.bookingToken)}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/book/retry?token=${encodeURIComponent(input.bookingToken)}`,
+    success_url: returns.success_url,
+    cancel_url: returns.cancel_url,
     metadata: {
       bookingId: input.bookingId,
       customerId: input.customerId ?? "",

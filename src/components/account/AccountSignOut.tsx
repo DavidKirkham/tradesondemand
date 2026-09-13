@@ -10,6 +10,7 @@ export function AccountSignOut() {
   async function signOut() {
     setBusy(true);
     await fetch("/api/account/logout", { method: "POST" });
+    router.push("/account/login");
     router.refresh();
   }
 

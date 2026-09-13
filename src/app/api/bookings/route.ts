@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createPublicId, createToken, validateBookingInput, type BookingInput } from "@/lib/booking";
 import { parseTradeRatesJson, parseTradesJson } from "@/lib/contractor";
 import { createCustomerToken, createPaymentPublicId } from "@/lib/customer";
-import { customerCookieOptions } from "@/lib/customer-auth";
+import { customerCookieOptions, issueCustomerSession } from "@/lib/customer-auth";
 import { depositForBooking } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
 import { isStripeCheckoutConfigured, stripeMissingKeysMessage } from "@/lib/stripe";
@@ -157,6 +157,7 @@ export async function POST(request: Request) {
     stripeMessage = stripeMissingKeysMessage();
   }
 
+  const sessionToken = await issueCustomerSession(customer.id);
   const response = NextResponse.json({
     publicId: booking.publicId,
     token: booking.token,
@@ -168,7 +169,7 @@ export async function POST(request: Request) {
     stripeMessage,
     paymentStatus: payment?.status ?? (deposit.amountCents === 0 ? "PAID" : "PENDING"),
   });
-  const cookie = customerCookieOptions(customer.token);
+  const cookie = customerCookieOptions(sessionToken);
   response.cookies.set(cookie.name, cookie.value, cookie);
   return response;
 }

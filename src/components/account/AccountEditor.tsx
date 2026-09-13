@@ -43,7 +43,7 @@ export function AccountEditor({
           className="mt-2 h-11 w-full rounded-xl border border-line bg-cream/60 px-3 text-muted"
         />
         <span className="mt-1 block text-xs text-muted">
-          This is the login key from your first booking. It is not public.
+          This is the email you sign in with. It is not public.
         </span>
       </label>
       <label className="block text-sm">
