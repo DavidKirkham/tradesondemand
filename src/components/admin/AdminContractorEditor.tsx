@@ -164,32 +164,41 @@ export function AdminContractorEditor({
     <div className="space-y-5 rounded-2xl border border-line bg-paper p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-2xl text-navy">Profile</h2>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setStatus("APPROVED")}
-            disabled={saving}
-            className="h-10 rounded-full bg-ok px-4 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            Approve
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatus("REJECTED")}
-            disabled={saving}
-            className="h-10 rounded-full bg-danger px-4 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatus("PENDING")}
-            disabled={saving}
-            className="h-10 rounded-full border border-line px-4 text-sm font-semibold text-navy disabled:opacity-60"
-          >
-            Pending
-          </button>
-        </div>
+        {form.status === "APPROVED" ? (
+          <p className="inline-flex h-10 items-center rounded-full bg-ok/15 px-4 text-sm font-semibold text-ok">
+            Approved
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setStatus("APPROVED")}
+              disabled={saving}
+              className="h-10 rounded-full bg-ok px-4 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              Approve
+            </button>
+            {form.status === "PENDING" ? (
+              <button
+                type="button"
+                onClick={() => setStatus("REJECTED")}
+                disabled={saving}
+                className="h-10 rounded-full bg-danger px-4 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                Reject
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStatus("PENDING")}
+                disabled={saving}
+                className="h-10 rounded-full border border-line px-4 text-sm font-semibold text-navy disabled:opacity-60"
+              >
+                Back to pending
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">

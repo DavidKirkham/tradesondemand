@@ -74,7 +74,14 @@ async function ContractorDetail({ id }: { id: string }) {
         <Link href="/admin/contractors" className="text-sm font-semibold text-ember">
           ← Subcontractors
         </Link>
-        <h1 className="mt-2 font-display text-3xl text-navy">{contractor.businessName}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="font-display text-3xl text-navy">{contractor.businessName}</h1>
+          {contractor.status === "APPROVED" ? (
+            <span className="inline-flex h-7 items-center rounded-full bg-ok/15 px-3 text-xs font-semibold text-ok">
+              Approved
+            </span>
+          ) : null}
+        </div>
         <p className="text-sm text-muted">
           {contractor.publicId} · {contractorStatusLabel(contractor.status)} ·{" "}
           {formatPhone(contractor.phone)}
