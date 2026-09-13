@@ -241,7 +241,7 @@ Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancel
 
 **In-app notify (v1):** while signed in, `/contractor` polls `GET /api/contractor/jobs` every 20s, badges the available count, refreshes the list, and can fire a browser `Notification` if the shop taps **Alert me in this browser**. Full Web Push (service-worker push when the PWA is closed) is not in v1.
 
-**Client SMS (optional Twilio):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. If they are missing, Accept still works; the ETA is saved and `/admin/jobs/<id>` shows SMS skipped. The same credentials send contractor **forgot-password** texts to the shop phone. Secrets are never logged.
+**Client SMS (optional Twilio):** set `TWILIO_ACCOUNT_SID` (Account SID `AC…`, used only in the Messages URL), `TWILIO_FROM_NUMBER`, and either `TWILIO_API_KEY_SID` (`SK…`) + `TWILIO_API_KEY_SECRET` **or** `TWILIO_AUTH_TOKEN`. If they are missing, Accept still works; the ETA is saved and `/admin/jobs/<id>` shows SMS skipped. The same credentials send contractor **forgot-password** texts to the shop phone. Secrets are never logged. Do not put an API Key SID in `TWILIO_ACCOUNT_SID` — that breaks the `/Accounts/{sid}/Messages.json` path.
 
 Optional seed (demo HVAC booking + approved Waldo contractor):
 
@@ -273,7 +273,10 @@ npx prisma db seed
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |
 | `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
 | `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | For SMS | Contractor Accept ETA texts **and** contractor forgot-password codes/links to the shop phone. Empty = skip send (accept still works; self-serve reset will not deliver a text — use Admin backup). |
+| `TWILIO_ACCOUNT_SID` | For SMS | Twilio Account SID (`AC…`). Used only in the Messages API path. Required whenever SMS is enabled. |
+| `TWILIO_API_KEY_SID` / `TWILIO_API_KEY_SECRET` | For SMS (preferred) | API Key SID (`SK…`) + secret for Basic auth. When both are set they are used instead of the Auth Token. |
+| `TWILIO_AUTH_TOKEN` | For SMS (fallback) | Account Auth Token. Used for Basic auth when API key SID+secret are not both set. |
+| `TWILIO_FROM_NUMBER` | For SMS | Twilio sender number. Empty Twilio creds = skip send (accept still works; self-serve reset will not deliver a text — use Admin backup). |
 
 ## Routes
 
