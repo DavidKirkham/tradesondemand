@@ -160,10 +160,10 @@ npm run dev
 Password-protected owner UI (same cookie as the old `/ops` board; `/ops` redirects here).
 
 - `/admin` — counts + recent clients + pending subcontractors  
-- `/admin/clients` / `/admin/clients/[id]` — search, edit contact, edit job-site addresses, booking history, TOD payments  
+- `/admin/clients` / `/admin/clients/[id]` — search, edit contact, edit job-site addresses, booking history, TOD payments, **delete**  
 - `/admin/contractors` / `/admin/contractors/[id]` — all statuses, filter by trade, edit profile/rates, approve/reject, **delete**, assigned jobs  
-- `/admin/jobs` — booking overview; assign an approved subcontractor from the list  
-- `/admin/jobs/[id]` — job detail: assign / reassign, status events  
+- `/admin/jobs` — booking overview; assign an approved subcontractor from the list; **delete** jumps to typed confirm  
+- `/admin/jobs/[id]` — job detail: assign / reassign, status events, **delete**  
 - `/admin/contractors/[id]` — edit shop; **push an unassigned or reassignable job** to that shop  
 
 Set **`ADMIN_PASSWORD` on Vercel** (Project → Settings → Environment Variables) for **Production and Preview**. `/admin` and `/ops` read `process.env.ADMIN_PASSWORD`, then `process.env.OPS_PASSWORD` if the first is unset. There is no default password in the app — do not use a documented example value in production. Locally, put your own value in `.env` (see `.env.example`; that blank is a local-dev placeholder only). Client records stay private; they are not listed on `/contractors`.
@@ -188,6 +188,24 @@ Pending / rejected shops never appear in the picker. Cancelled jobs cannot be as
 4. After delete, you land back on the subcontractors list with a success banner.
 
 **Booking rule:** open jobs (`RECEIVED`, `DISPATCHED`, `EN_ROUTE`, `ON_SITE`) **block** delete so active or unpaid work is not silently unassigned. Reassign, complete, or cancel those jobs first. Completed and cancelled jobs stay on the books with `contractorId` set to `null`. Payments stay on the booking. `ContractorPasswordReset` and `ContractorPushSubscription` rows cascade. The shop’s `loginToken` / `sessionToken` / password hash go away with the contractor row. There is no Invoice model in v1.
+
+### Delete a job
+
+1. Sign in at `/admin` and open **Jobs** (`/admin/jobs`) or a ticket (`/admin/jobs/<id>`).
+2. On the list or job card, **Delete** jumps to the typed-confirm panel. On the detail page, **Delete job** is at the bottom.
+3. Type the **public job ID** (case-insensitive, e.g. `TOD-ABC123`) and confirm. `DELETE /api/admin/bookings/<id>` requires the same admin cookie as the rest of `/admin`. Unauthenticated callers get **401**.
+4. After delete, you land back on the jobs list with a success banner.
+
+**Payment / SMS rule:** `PAID` invoices **block** delete so Stripe ledger rows are not silently cascaded. Open Stripe Checkout sessions (`PENDING` + `stripeCheckoutSessionId`) also **block**, because a customer could still complete payment after the job vanished. Refund paid items or let the session expire first. Allowed jobs cascade `StatusEvent` rows and remaining `Payment` rows (`PENDING` without a session, or `REFUNDED`). Client SMS fields live on the booking and go away with it. Job status itself does not block — spam or cancelled tickets can be removed.
+
+### Delete a client
+
+1. Sign in at `/admin` and open **Clients** (`/admin/clients`) or a profile (`/admin/clients/<id>`).
+2. On the list, **Delete** jumps to the typed-confirm panel. On the detail page, **Delete client** is at the bottom.
+3. Type the **exact client name** (case-insensitive) and confirm. `DELETE /api/admin/clients/<id>` requires the same admin cookie. Unauthenticated callers get **401**.
+4. After delete, you land back on the clients list with a success banner.
+
+**Booking rule:** same safety as contractor delete. Open jobs **block** delete so active work is not silently unlinked. Complete or cancel those jobs first. Completed and cancelled jobs stay on the books with `customerId` set to `null`; denormalized name, phone, and email remain on those tickets. Payment rows stay on the jobs with `customerId` set to `null`. Portal login (`passwordHash` / `sessionToken` / reset-code fields) goes away with the customer row.
 
 ### Customer portal (`/account`)
 
@@ -307,7 +325,7 @@ npx prisma db seed
 | `/account/[token]` `/account/s/[token]` | One-time set-password invite (not a passwordless session) |
 | `/status` `/status/[token]` | Customer job status |
 | `/contractor` `/contractor/forgot` `/contractor/r/[token]` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — sign-in, forgot-password SMS reset, current jobs, past jobs, SMS, TOD payment status, profile |
-| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit clients and subcontractors; **assign jobs** (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
+| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit/delete clients, subcontractors, and jobs (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
 | `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |
 | `/api/stripe/webhook` | Stripe signature-verified payment updates |
@@ -316,7 +334,7 @@ npx prisma db seed
 | `/api/account/*` | Customer portal session (`tod_customer_session`, distinct from contractor/admin) |
 | `/api/contractor/*` | Approved-contractor session (separate cookie from admin/customers) |
 | `/api/contractor/push` | Get VAPID public key + save/delete this shop’s Web Push subscription |
-| `/api/admin/*` | Authenticated admin login + client/contractor/job edits + contractor delete |
+| `/api/admin/*` | Authenticated admin login + client/contractor/job edits + admin delete (contractor, job, client) |
 | `/api/ops/*` | Same cookie auth; older ops endpoints still work |
 
 ## Out of scope (v1)

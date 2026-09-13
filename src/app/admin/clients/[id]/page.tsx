@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminAddressEditor } from "@/components/admin/AdminAddressEditor";
 import { AdminAssignContractor } from "@/components/admin/AdminAssignContractor";
+import { AdminClientDelete } from "@/components/admin/AdminClientDelete";
 import { AdminClientEditor } from "@/components/admin/AdminClientEditor";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { AdminPaymentStatus } from "@/components/admin/AdminPaymentStatus";
 import { statusLabel } from "@/lib/booking";
+import { isPastContractorJob } from "@/lib/contractor-app";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
@@ -186,6 +188,19 @@ async function ClientDetail({ id }: { id: string }) {
           </ul>
         )}
       </section>
+
+      <AdminClientDelete
+        id={customer.id}
+        name={customer.name}
+        activeJobs={customer.bookings
+          .filter((booking) => !isPastContractorJob(booking.status))
+          .map((booking) => ({
+            id: booking.id,
+            publicId: booking.publicId,
+            status: booking.status,
+          }))}
+        closedJobCount={customer.bookings.filter((booking) => isPastContractorJob(booking.status)).length}
+      />
     </div>
   );
 }

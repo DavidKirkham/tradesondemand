@@ -46,9 +46,14 @@ export function AdminJobAssignCard({
             {contractorName ? `Current shop: ${contractorName}` : "Unassigned — pick a shop below"}
           </p>
         </div>
-        <Link href={`/admin/jobs/${id}`} className="text-sm font-semibold text-ember">
-          Job detail
-        </Link>
+        <div className="flex flex-col items-end gap-1">
+          <Link href={`/admin/jobs/${id}`} className="text-sm font-semibold text-ember">
+            Job detail
+          </Link>
+          <Link href={`/admin/jobs/${id}#delete`} className="text-sm font-semibold text-danger hover:underline">
+            Delete
+          </Link>
+        </div>
       </div>
       <div className="mt-4 border-t border-line pt-3">
         <AdminAssignContractor

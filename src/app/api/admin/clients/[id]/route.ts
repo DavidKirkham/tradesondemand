@@ -1,9 +1,42 @@
 import { NextResponse } from "next/server";
 import { validateAdminCustomerPatch } from "@/lib/admin";
+import { deleteAdminClient } from "@/lib/admin-client-delete";
+import { prismaFailureResponse } from "@/lib/api-errors";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  if (!(await isOpsAuthenticated())) {
+    return NextResponse.json({ error: "Sign in to admin." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  let confirm = "";
+  try {
+    const body = (await request.json()) as { confirm?: string };
+    confirm = String(body.confirm ?? "");
+  } catch {
+    return NextResponse.json({ error: "Type the client name to confirm deletion." }, { status: 400 });
+  }
+
+  try {
+    const result = await deleteAdminClient(id, confirm);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error, ...(result.jobs ? { jobs: result.jobs } : {}) },
+        { status: result.status },
+      );
+    }
+    return NextResponse.json({ ok: true, name: result.name });
+  } catch (error) {
+    return prismaFailureResponse(error, "Could not delete client.");
+  }
+}
 
 export async function PATCH(
   request: Request,
