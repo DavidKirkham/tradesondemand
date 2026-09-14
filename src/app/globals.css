@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #102033;
+  --navy-deep: #0a1624;
+  --navy-mid: #1a334d;
+  --ember: #e25b1a;
+  --ember-dark: #c4470d;
+  --gold: #e8c36a;
+  --cream: #f4efe4;
+  --cream-2: #ebe4d4;
+  --ink: #16202c;
+  --muted: #5b6b7c;
+  --line: #d7cfc0;
+  --ok: #1f7a4d;
+  --danger: #b42318;
+  --paper: #fffdf8;
+  --background: var(--cream);
+  --foreground: var(--ink);
+}
+
+@theme inline {
+  --color-navy: var(--navy);
+  --color-navy-deep: var(--navy-deep);
+  --color-navy-mid: var(--navy-mid);
+  --color-ember: var(--ember);
+  --color-ember-dark: var(--ember-dark);
+  --color-gold: var(--gold);
+  --color-cream: var(--cream);
+  --color-cream-2: var(--cream-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
+  --color-paper: var(--paper);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-fraunces);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+::selection {
+  background: #f3c19a;
+  color: var(--navy-deep);
+}
+
+.hero-grid {
+  background-color: var(--navy);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(226, 91, 26, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(232, 195, 106, 0.12), transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    28px 28px,
+    28px 28px;
+}
+
+.stamp {
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}

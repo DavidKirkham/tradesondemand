@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  publicId        String        @unique
+  token           String        @unique
+  trade           String
+  problem         String
+  urgency         String
+  street          String
+  city            String
+  state           String
+  zip             String
+  customerName    String
+  customerPhone   String
+  customerEmail   String
+  status          String        @default("RECEIVED")
+  quoteSummary    String
+  contractorId    String?
+  contractor      Contractor?   @relation(fields: [contractorId], references: [id])
+  customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  matchPreference String        @default("FIRST_AVAILABLE")
+  customerSmsStatus String?
+  customerSmsBody   String?
+  customerSmsError  String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  events          StatusEvent[]
+  payments        Payment[]
+  invoice         Invoice?
+  payouts         ContractorPayout[]
+}
+
+model StatusEvent {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+model Contractor {
+  id                 String    @id @default(cuid())
+  publicId           String    @unique
+  slug               String    @unique
+  businessName       String
+  contactName        String
+  phone              String
+  email              String
+  tradesJson         String
+  licenseNumber      String
+  licenseType        String
+  licenseState       String
+  serviceArea        String
+  insured            Boolean
+  insuranceDetails   String?
+  yearsExperience    Int?
+  bio                String?
+  hourlyRateCents    Int
+  minimumChargeCents Int
+  emergencyRateCents Int?
+  tradeRatesJson     String
+  status             String    @default("PENDING")
+  reviewNote         String?
+  loginToken         String    @unique
+  passwordHash       String?
+  sessionToken       String?   @unique
+  stripeConnectAccountId      String?   @unique
+  stripeConnectOnboarded      Boolean   @default(false)
+  stripeConnectPayoutsEnabled Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  bookings           Booking[]
+  invoices           Invoice[]
+  payouts            ContractorPayout[]
+  passwordReset      ContractorPasswordReset?
+  pushSubscriptions  ContractorPushSubscription[]
+}
+
+model ContractorPasswordReset {
+  id           String     @id @default(cuid())
+  contractorId String     @unique
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  tokenHash    String     @unique
+  codeHash     String
+  expiresAt    DateTime
+  sentAt       DateTime
+  attempts     Int        @default(0)
+}
+
+model ContractorPushSubscription {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  endpoint     String     @unique
+  p256dh       String
+  auth         String
+  userAgent    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([contractorId])
+}
+
+model Customer {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  phone              String
+  token              String    @unique
+  passwordHash       String?
+  sessionToken       String?   @unique
+  resetCodeHash      String?
+  resetCodeExpiresAt DateTime?
+  preferredContact   String    @default("PHONE")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  bookings           Booking[]
+  payments           Payment[]
+}
+
+model Payment {
+  id                      String    @id @default(cuid())
+  publicId                String    @unique
+  bookingId               String
+  booking                 Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customerId              String?
+  customer                Customer? @relation(fields: [customerId], references: [id])
+  amountCents             Int
+  type                    String
+  status                  String    @default("PENDING")
+  note                    String?
+  stripeCheckoutSessionId String?   @unique
+  stripePaymentIntentId   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  invoice                 Invoice?
+
+  @@index([bookingId])
+  @@index([customerId])
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  publicId         String        @unique
+  bookingId        String        @unique
+  booking          Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  contractorId     String?
+  contractor       Contractor?   @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  paymentId        String?       @unique
+  payment          Payment?      @relation(fields: [paymentId], references: [id])
+  status           String        @default("DRAFT")
+  laborHours       String?
+  laborRateCents   Int           @default(0)
+  laborCents       Int           @default(0)
+  materialsCents   Int           @default(0)
+  subtotalCents    Int
+  customerSubtotalCents Int      @default(0)
+  markupCents      Int           @default(0)
+  depositPaidCents Int           @default(0)
+  amountDueCents   Int
+  note             String?
+  sentAt           DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  lines            InvoiceLine[]
+  payout           ContractorPayout?
+
+  @@index([contractorId])
+}
+
+model ContractorPayout {
+  id               String      @id @default(cuid())
+  publicId         String      @unique
+  contractorId     String?
+  contractor       Contractor? @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  bookingId        String
+  booking          Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  invoiceId        String      @unique
+  invoice          Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  shopAmountCents  Int
+  status           String      @default("PENDING")
+  stripeTransferId String?     @unique
+  failureMessage   String?
+  transferredAt    DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([contractorId])
+  @@index([bookingId])
+  @@index([status])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  kind        String  // LABOR | MATERIAL | DISCOUNT (shop-side; DISCOUNT amountCents is negative)
+  description String
+  quantity    String
+  unitCents   Int
+  amountCents Int
+  sortOrder   Int     @default(0)
+
+  @@index([invoiceId])
+}
