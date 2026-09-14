@@ -114,6 +114,7 @@ describe("saveAdminInvoice", () => {
         totals: expect.objectContaining({
           laborCents: 22000,
           materialsCents: 16900,
+          discountCents: 0,
           subtotalCents: shopSubtotalCents,
           customerSubtotalCents,
           markupCents: platformMarkupCents(shopSubtotalCents),
@@ -124,6 +125,83 @@ describe("saveAdminInvoice", () => {
     );
     expect(amountDueCents).toBe(27780);
     expect(customerSubtotalCents).toBe(46680);
+  });
+
+  it("applies a shop discount before markup when correcting lines", async () => {
+    const persist = vi.fn(async () => savedInvoice as never);
+    const result = await saveAdminInvoice(
+      "job_1",
+      {
+        labor: [{ description: "HVAC labor", hours: "1.5", rate: "110" }],
+        materials: [{ description: "Blower motor", cost: "169" }],
+        discounts: [{ description: "Goodwill", amount: "50" }],
+        note: "Corrected hours and shop discount",
+      },
+      store({ persist }),
+    );
+    expect(result.ok).toBe(true);
+    const shopSubtotalCents = 16500 + 16900 - 5000;
+    const customerSubtotalCents = applyPlatformMarkupCents(shopSubtotalCents);
+    const amountDueCents = customerSubtotalCents - 18900;
+    expect(shopSubtotalCents).toBe(28400);
+    expect(customerSubtotalCents).toBe(34080);
+    expect(amountDueCents).toBe(15180);
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publish: true,
+        note: "Corrected hours and shop discount",
+        lines: [
+          {
+            kind: "LABOR",
+            description: "HVAC labor",
+            quantity: "1.5",
+            unitCents: 11000,
+            amountCents: 16500,
+          },
+          {
+            kind: "MATERIAL",
+            description: "Blower motor",
+            quantity: "1",
+            unitCents: 16900,
+            amountCents: 16900,
+          },
+          {
+            kind: "DISCOUNT",
+            description: "Goodwill",
+            quantity: "1",
+            unitCents: -5000,
+            amountCents: -5000,
+          },
+        ],
+        totals: expect.objectContaining({
+          laborCents: 16500,
+          materialsCents: 16900,
+          discountCents: -5000,
+          subtotalCents: shopSubtotalCents,
+          customerSubtotalCents,
+          markupCents: platformMarkupCents(shopSubtotalCents),
+          depositPaidCents: 18900,
+          amountDueCents,
+        }),
+      }),
+    );
+  });
+
+  it("rejects a discount that exceeds shop labor and materials", async () => {
+    const persist = vi.fn(async () => savedInvoice as never);
+    const result = await saveAdminInvoice(
+      "job_1",
+      {
+        labor: [{ hours: "1", rate: "100" }],
+        discounts: [{ amount: "400" }],
+      },
+      store({ persist }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.status).toBe(400);
+    expect(result.error).toMatch(/cannot exceed the shop labor and materials/);
+    expect(persist).not.toHaveBeenCalled();
   });
 
   it("keeps drafts unpublished so customers do not see them yet", async () => {

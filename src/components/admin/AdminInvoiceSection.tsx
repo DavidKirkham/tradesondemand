@@ -37,8 +37,8 @@ export function AdminInvoiceSection({
         <div>
           <h2 className="font-display text-xl text-navy">Invoice</h2>
           <p className="mt-1 text-sm text-muted">
-            Click the customer balance to edit shop line items. Checkout charges the marked-up
-            amount due (shop + 20%), not the shop subtotal.
+            Click the customer balance to edit shop line items and shop discounts. Checkout charges
+            the marked-up amount due (shop after discount + 20%), not the shop subtotal.
           </p>
         </div>
         {!editing ? (

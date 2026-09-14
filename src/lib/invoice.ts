@@ -5,8 +5,14 @@ import { applyPlatformMarkupCents, platformMarkupCents } from "./pricing";
 export const INVOICE_STATUSES = ["DRAFT", "SENT", "PAID"] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
-export const INVOICE_LINE_KINDS = ["LABOR", "MATERIAL"] as const;
+export const INVOICE_LINE_KINDS = ["LABOR", "MATERIAL", "DISCOUNT"] as const;
 export type InvoiceLineKind = (typeof INVOICE_LINE_KINDS)[number];
+
+/**
+ * Shop-side DISCOUNT lines store a negative amountCents so they reduce the
+ * contractor/shop subtotal before the 20% TOD markup. Customer due is then
+ * applyPlatformMarkupCents(shopSubtotal) minus deposits — same as send/save.
+ */
 
 export const MAX_INVOICE_LINES = 20;
 export const MAX_INVOICE_HOURS = 200;
@@ -31,11 +37,17 @@ export type InvoiceMaterialRowInput = {
   cost?: string;
 };
 
+export type InvoiceDiscountRowInput = {
+  description?: string;
+  amount?: string;
+};
+
 export type InvoiceTotals = {
   laborHours: string | null;
   laborRateCents: number;
   laborCents: number;
   materialsCents: number;
+  discountCents: number;
   subtotalCents: number;
   customerSubtotalCents: number;
   markupCents: number;
@@ -118,12 +130,19 @@ export function depositCreditCents(
   return paid;
 }
 
+export function applyPlatformMarkupSignedCents(cents: number): number {
+  if (!Number.isFinite(cents) || cents === 0) return 0;
+  if (cents > 0) return applyPlatformMarkupCents(cents);
+  return -applyPlatformMarkupCents(-cents);
+}
+
 export function totalsFromLines(
   lines: Pick<InvoiceLineDraft, "kind" | "amountCents" | "quantity" | "unitCents">[],
   depositPaidCents: number,
 ): InvoiceTotals {
   let laborCents = 0;
   let materialsCents = 0;
+  let discountCents = 0;
   let laborHours: string | null = null;
   let laborRateCents = 0;
   for (const line of lines) {
@@ -133,11 +152,13 @@ export function totalsFromLines(
         laborHours = line.quantity;
         laborRateCents = line.unitCents;
       }
-    } else {
+    } else if (line.kind === "MATERIAL") {
       materialsCents += line.amountCents;
+    } else if (line.kind === "DISCOUNT") {
+      discountCents += line.amountCents;
     }
   }
-  const subtotalCents = laborCents + materialsCents;
+  const subtotalCents = Math.max(0, laborCents + materialsCents + discountCents);
   const customerSubtotalCents = applyPlatformMarkupCents(subtotalCents);
   const markupCents = platformMarkupCents(subtotalCents);
   return {
@@ -145,6 +166,7 @@ export function totalsFromLines(
     laborRateCents,
     laborCents,
     materialsCents,
+    discountCents,
     subtotalCents,
     customerSubtotalCents,
     markupCents,
@@ -164,8 +186,8 @@ export function customerFacingInvoiceLines<T extends { unitCents: number; amount
   if (!applyMarkup) return lines;
   return lines.map((line) => ({
     ...line,
-    unitCents: applyPlatformMarkupCents(line.unitCents),
-    amountCents: applyPlatformMarkupCents(line.amountCents),
+    unitCents: applyPlatformMarkupSignedCents(line.unitCents),
+    amountCents: applyPlatformMarkupSignedCents(line.amountCents),
   }));
 }
 
@@ -264,15 +286,46 @@ export function parseMaterialRow(
   };
 }
 
+export function parseDiscountRow(
+  input: InvoiceDiscountRowInput,
+): { ok: true; skip: true } | { ok: true; line: InvoiceLineDraft } | { ok: false; message: string } {
+  const description = input.description?.trim() || "Discount";
+  const amountRaw = input.amount?.trim() ?? "";
+  if (!input.description?.trim() && !amountRaw) return { ok: true, skip: true };
+  if (!amountRaw) return { ok: false, message: "Enter a discount amount." };
+  if (description.length > 120) return { ok: false, message: "Keep discount descriptions under 120 characters." };
+  const offCents = parseUsdToCents(amountRaw);
+  if (!offCents) return { ok: false, message: "Enter a positive shop discount." };
+  return {
+    ok: true,
+    line: {
+      kind: "DISCOUNT",
+      description,
+      quantity: "1",
+      unitCents: -offCents,
+      amountCents: -offCents,
+    },
+  };
+}
+
 export function validateInvoicePayload(input: {
   labor?: InvoiceLaborRowInput[];
   materials?: InvoiceMaterialRowInput[];
+  discounts?: InvoiceDiscountRowInput[];
   note?: string;
 }): { ok: true; lines: InvoiceLineDraft[]; note: string | null } | { ok: false; message: string } {
   const laborRows = input.labor ?? [];
   const materialRows = input.materials ?? [];
-  if (laborRows.length > MAX_INVOICE_LINES || materialRows.length > MAX_INVOICE_LINES) {
-    return { ok: false, message: `Keep invoices to ${MAX_INVOICE_LINES} labor and ${MAX_INVOICE_LINES} material lines.` };
+  const discountRows = input.discounts ?? [];
+  if (
+    laborRows.length > MAX_INVOICE_LINES ||
+    materialRows.length > MAX_INVOICE_LINES ||
+    discountRows.length > MAX_INVOICE_LINES
+  ) {
+    return {
+      ok: false,
+      message: `Keep invoices to ${MAX_INVOICE_LINES} labor, material, and discount lines.`,
+    };
   }
 
   const lines: InvoiceLineDraft[] = [];
@@ -286,19 +339,40 @@ export function validateInvoicePayload(input: {
     if (!parsed.ok) return parsed;
     if ("line" in parsed) lines.push(parsed.line);
   }
-  if (lines.length === 0) {
+  for (const row of discountRows) {
+    const parsed = parseDiscountRow(row);
+    if (!parsed.ok) return parsed;
+    if ("line" in parsed) lines.push(parsed.line);
+  }
+  if (!lines.some((line) => line.kind === "LABOR" || line.kind === "MATERIAL")) {
     return { ok: false, message: "Add labor hours or at least one material cost." };
   }
 
   const note = input.note?.trim() || null;
   if (note && note.length > 400) return { ok: false, message: "Keep the invoice note under 400 characters." };
 
-  const subtotal = lines.reduce((sum, line) => sum + line.amountCents, 0);
-  if (subtotal > MAX_INVOICE_SUBTOTAL_CENTS) {
+  const billableCents = lines
+    .filter((line) => line.kind !== "DISCOUNT")
+    .reduce((sum, line) => sum + line.amountCents, 0);
+  const discountOffCents = -lines
+    .filter((line) => line.kind === "DISCOUNT")
+    .reduce((sum, line) => sum + line.amountCents, 0);
+  if (discountOffCents > billableCents) {
+    return { ok: false, message: "Discount cannot exceed the shop labor and materials subtotal." };
+  }
+  if (billableCents > MAX_INVOICE_SUBTOTAL_CENTS) {
     return { ok: false, message: `Invoice subtotal must be ${formatUsd(MAX_INVOICE_SUBTOTAL_CENTS)} or less.` };
   }
 
   return { ok: true, lines, note };
+}
+
+export function preserveDiscountLines(
+  nextLines: InvoiceLineDraft[],
+  existingLines: { kind: string; description: string; quantity: string; unitCents: number; amountCents: number }[],
+): InvoiceLineDraft[] {
+  if (nextLines.some((line) => line.kind === "DISCOUNT")) return nextLines;
+  return [...nextLines, ...toInvoiceLineDrafts(existingLines).filter((line) => line.kind === "DISCOUNT")];
 }
 
 export function invoiceStatusAfterSend(amountDueCents: number): InvoiceStatus {
@@ -344,6 +418,7 @@ export function toInvoiceLineDrafts(
 export function linesToFormState(lines: InvoiceLineDraft[]): {
   labor: { description: string; hours: string; rate: string }[];
   materials: { description: string; cost: string }[];
+  discounts: { description: string; amount: string }[];
 } {
   const labor = lines
     .filter((line) => line.kind === "LABOR")
@@ -358,8 +433,18 @@ export function linesToFormState(lines: InvoiceLineDraft[]): {
       description: line.description,
       cost: (line.unitCents / 100).toFixed(line.unitCents % 100 === 0 ? 0 : 2),
     }));
+  const discounts = lines
+    .filter((line) => line.kind === "DISCOUNT")
+    .map((line) => {
+      const offCents = Math.abs(line.amountCents);
+      return {
+        description: line.description,
+        amount: (offCents / 100).toFixed(offCents % 100 === 0 ? 0 : 2),
+      };
+    });
   return {
     labor: labor.length > 0 ? labor : [{ description: "Labor", hours: "", rate: "" }],
     materials: materials.length > 0 ? materials : [{ description: "", cost: "" }],
+    discounts: discounts.length > 0 ? discounts : [{ description: "", amount: "" }],
   };
 }

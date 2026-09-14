@@ -1,6 +1,9 @@
 import {
   customerFacingInvoiceTotals,
+  depositCreditCents,
   invoiceHasStoredMarkup,
+  toInvoiceLineDrafts,
+  type InvoiceLineDraft,
   type InvoiceMoneyFields,
 } from "./invoice";
 import {
@@ -19,20 +22,50 @@ export type InvoiceDuePayment = {
   amountCents: number;
 };
 
+export type InvoiceDueLine = {
+  kind: string;
+  description: string;
+  quantity: string;
+  unitCents: number;
+  amountCents: number;
+};
+
 export type InvoiceDueSource = InvoiceMoneyFields & {
   id: string;
   publicId: string;
   status: string;
+  note?: string | null;
+  paymentId?: string | null;
   sentAt: Date | null;
   createdAt: Date;
+  lines?: InvoiceDueLine[];
   booking: {
     id: string;
     publicId: string;
     customerName: string;
     customer?: { id: string; name: string } | null;
     contractor?: { id: string; businessName: string } | null;
+    payments?: { id: string; amountCents: number; status: string }[];
   };
   payment?: InvoiceDuePayment | null;
+};
+
+export type AdminInvoiceDueEditor = {
+  jobId: string;
+  depositPaidCents: number;
+  invoice: {
+    publicId: string;
+    status: string;
+    note: string | null;
+    laborCents: number;
+    materialsCents: number;
+    subtotalCents: number;
+    customerSubtotalCents: number;
+    markupCents: number;
+    depositPaidCents: number;
+    amountDueCents: number;
+    lines: InvoiceLineDraft[];
+  };
 };
 
 export type AdminInvoiceDueRow = {
@@ -48,11 +81,14 @@ export type AdminInvoiceDueRow = {
   status: string;
   sentAt: Date | null;
   createdAt: Date;
+  sentAtLabel: string;
   amountDueCents: number;
   shopSubtotalCents: number;
   customerSubtotalCents: number;
   markupCents: number;
+  discountCents: number;
   hasMarkup: boolean;
+  editor: AdminInvoiceDueEditor;
 };
 
 export function isInvoiceDueSort(value: string | undefined | null): value is InvoiceDueSort {
@@ -102,6 +138,13 @@ export function sortInvoicesDue<T extends { amountDueCents: number; sentAt: Date
 export function toAdminInvoiceDueRow(invoice: InvoiceDueSource): AdminInvoiceDueRow | null {
   if (!invoiceIsOutstandingDue(invoice)) return null;
   const customer = customerFacingInvoiceTotals(invoice);
+  const lines = toInvoiceLineDrafts(invoice.lines ?? []);
+  const discountCents = lines
+    .filter((line) => line.kind === "DISCOUNT")
+    .reduce((sum, line) => sum + line.amountCents, 0);
+  const depositPaidCents = invoice.booking.payments
+    ? depositCreditCents(invoice.booking.payments, invoice.paymentId)
+    : invoice.depositPaidCents;
   return {
     invoiceId: invoice.id,
     invoicePublicId: invoice.publicId,
@@ -115,11 +158,30 @@ export function toAdminInvoiceDueRow(invoice: InvoiceDueSource): AdminInvoiceDue
     status: invoice.status,
     sentAt: invoice.sentAt,
     createdAt: invoice.createdAt,
+    sentAtLabel: formatInvoiceDueDate(invoice.sentAt),
     amountDueCents: invoice.amountDueCents,
     shopSubtotalCents: invoice.subtotalCents,
     customerSubtotalCents: customer.subtotalCents,
     markupCents: customer.markupCents,
+    discountCents,
     hasMarkup: invoiceHasStoredMarkup(invoice),
+    editor: {
+      jobId: invoice.booking.id,
+      depositPaidCents,
+      invoice: {
+        publicId: invoice.publicId,
+        status: invoice.status,
+        note: invoice.note ?? null,
+        laborCents: invoice.laborCents,
+        materialsCents: invoice.materialsCents,
+        subtotalCents: invoice.subtotalCents,
+        customerSubtotalCents: invoice.customerSubtotalCents ?? 0,
+        markupCents: invoice.markupCents ?? 0,
+        depositPaidCents: invoice.depositPaidCents,
+        amountDueCents: invoice.amountDueCents,
+        lines,
+      },
+    },
   };
 }
 
@@ -151,6 +213,31 @@ export function invoicesDueTotalCents(rows: Pick<AdminInvoiceDueRow, "amountDueC
   return rows.reduce((sum, row) => sum + row.amountDueCents, 0);
 }
 
+export function toAdminInvoiceDueTableRow(
+  row: AdminInvoiceDueRow,
+): Omit<AdminInvoiceDueRow, "sentAt" | "createdAt"> {
+  return {
+    invoiceId: row.invoiceId,
+    invoicePublicId: row.invoicePublicId,
+    jobId: row.jobId,
+    jobPublicId: row.jobPublicId,
+    jobHref: row.jobHref,
+    clientId: row.clientId,
+    clientName: row.clientName,
+    contractorId: row.contractorId,
+    contractorName: row.contractorName,
+    status: row.status,
+    sentAtLabel: row.sentAtLabel,
+    amountDueCents: row.amountDueCents,
+    shopSubtotalCents: row.shopSubtotalCents,
+    customerSubtotalCents: row.customerSubtotalCents,
+    markupCents: row.markupCents,
+    discountCents: row.discountCents,
+    hasMarkup: row.hasMarkup,
+    editor: row.editor,
+  };
+}
+
 export function formatInvoiceDueDate(value: Date | null | undefined): string {
   if (!value) return "Not sent";
   return value.toLocaleDateString("en-US", {
@@ -169,9 +256,20 @@ const invoiceDueInclude = {
       customerName: true,
       customer: { select: { id: true, name: true } },
       contractor: { select: { id: true, businessName: true } },
+      payments: { select: { id: true, amountCents: true, status: true } },
     },
   },
   payment: { select: { status: true, type: true, amountCents: true } },
+  lines: {
+    orderBy: { sortOrder: "asc" as const },
+    select: {
+      kind: true,
+      description: true,
+      quantity: true,
+      unitCents: true,
+      amountCents: true,
+    },
+  },
 };
 
 const invoiceDueWhere = {
