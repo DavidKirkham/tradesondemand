@@ -154,8 +154,8 @@ export function AdminTakeCallForm({ contractors }: { contractors: AdminIntakeCon
     }));
   }
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  async function submit(event?: FormEvent) {
+    event?.preventDefault();
     setSaving(true);
     setError("");
     setField(undefined);
@@ -243,7 +243,13 @@ export function AdminTakeCallForm({ contractors }: { contractors: AdminIntakeCon
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-6">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit(event);
+      }}
+      className="space-y-6"
+    >
       <section className="rounded-2xl border border-line bg-paper p-5">
         <h2 className="font-display text-xl text-navy">Customer</h2>
         <p className="mt-1 text-sm text-muted">Match an existing profile by phone or email, or create one from this call.</p>
@@ -485,8 +491,9 @@ export function AdminTakeCallForm({ contractors }: { contractors: AdminIntakeCon
       ) : null}
 
       <button
-        type="submit"
+        type="button"
         disabled={saving}
+        onClick={(event) => void submit(event)}
         className="h-12 rounded-full bg-ember px-6 text-sm font-semibold text-white disabled:opacity-50"
       >
         {saving ? "Creating job…" : "Create job and assign"}
