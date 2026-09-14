@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const isOpsAuthenticated = vi.fn();
 const saveAdminInvoice = vi.fn();
+const revalidateInvoiceSurfaces = vi.fn();
 
 vi.mock("@/lib/ops-auth", () => ({
   isOpsAuthenticated: (...args: unknown[]) => isOpsAuthenticated(...args),
@@ -9,6 +10,10 @@ vi.mock("@/lib/ops-auth", () => ({
 
 vi.mock("@/lib/admin-invoice-edit", () => ({
   saveAdminInvoice: (...args: unknown[]) => saveAdminInvoice(...args),
+}));
+
+vi.mock("@/lib/invoice-revalidate", () => ({
+  revalidateInvoiceSurfaces: (...args: unknown[]) => revalidateInvoiceSurfaces(...args),
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
@@ -19,6 +24,7 @@ describe("PATCH /api/admin/bookings/[id]/invoice", () => {
   beforeEach(() => {
     isOpsAuthenticated.mockReset();
     saveAdminInvoice.mockReset();
+    revalidateInvoiceSurfaces.mockReset();
   });
 
   it("rejects callers who are not signed in as admin", async () => {
@@ -60,6 +66,8 @@ describe("PATCH /api/admin/bookings/[id]/invoice", () => {
     saveAdminInvoice.mockResolvedValue({
       ok: true,
       invoice: { publicId: "INV-DONE01", amountDueCents: 20000 },
+      publicInvoice: { publicId: "INV-DONE01", amountDueCents: 20000, lines: [] },
+      surfaces: { jobId: "job_1", jobPublicId: "TOD-DONE01", customerId: "cus_1", statusToken: "tok" },
     });
     const body = {
       labor: [{ description: "HVAC labor", hours: "2", rate: "110" }],
@@ -76,8 +84,14 @@ describe("PATCH /api/admin/bookings/[id]/invoice", () => {
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      invoice: { publicId: "INV-DONE01", amountDueCents: 20000 },
+      invoice: { publicId: "INV-DONE01", amountDueCents: 20000, lines: [] },
     });
     expect(saveAdminInvoice).toHaveBeenCalledWith("job_1", body);
+    expect(revalidateInvoiceSurfaces).toHaveBeenCalledWith({
+      jobId: "job_1",
+      jobPublicId: "TOD-DONE01",
+      customerId: "cus_1",
+      statusToken: "tok",
+    });
   });
 });

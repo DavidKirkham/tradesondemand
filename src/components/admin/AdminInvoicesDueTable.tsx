@@ -2,16 +2,26 @@
 
 import { useEffect, useId, useState } from "react";
 import Link from "next/link";
-import type { AdminInvoiceDueRow } from "@/lib/admin-invoices-due";
+import { applySavedInvoiceToDueRow, invoicesDueTotalCents, type AdminInvoiceDueRow } from "@/lib/admin-invoices-due";
 import { invoiceStatusLabel } from "@/lib/invoice";
 import { formatUsd } from "@/lib/money";
-import { AdminInvoiceEditor } from "./AdminInvoiceEditor";
+import { AdminInvoiceEditor, type AdminInvoiceEditorInvoice } from "./AdminInvoiceEditor";
 
 export type AdminInvoicesDueTableRow = Omit<AdminInvoiceDueRow, "sentAt" | "createdAt">;
 
 export function AdminInvoicesDueTable({ rows }: { rows: AdminInvoicesDueTableRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const open = rows.find((row) => row.invoiceId === openId) ?? null;
+  const [savedByInvoiceId, setSavedByInvoiceId] = useState<Record<string, AdminInvoiceEditorInvoice>>(
+    {},
+  );
+  const displayRows = rows.flatMap((row) => {
+    const saved = savedByInvoiceId[row.invoiceId];
+    if (!saved) return [row];
+    const next = applySavedInvoiceToDueRow(row, saved);
+    return next ? [next] : [];
+  });
+  const open = displayRows.find((row) => row.invoiceId === openId) ?? null;
+  const totalCents = invoicesDueTotalCents(displayRows);
 
   useEffect(() => {
     if (!open) return;
@@ -29,6 +39,15 @@ export function AdminInvoicesDueTable({ rows }: { rows: AdminInvoicesDueTableRow
 
   return (
     <>
+      <p className="mt-6 text-sm font-semibold text-navy">
+        {displayRows.length} {displayRows.length === 1 ? "invoice" : "invoices"} · customer owes{" "}
+        {formatUsd(totalCents)}
+      </p>
+      {displayRows.length === 0 ? (
+        <p className="mt-8 rounded-2xl border border-dashed border-line px-6 py-12 text-center text-muted">
+          Nothing is owed to TOD right now.
+        </p>
+      ) : (
       <div className="mt-3 overflow-x-auto rounded-2xl border border-line bg-paper">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-line bg-cream-2/60 text-xs uppercase tracking-wide text-muted">
@@ -45,7 +64,7 @@ export function AdminInvoicesDueTable({ rows }: { rows: AdminInvoicesDueTableRow
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {displayRows.map((row) => (
               <tr
                 key={row.invoiceId}
                 className="cursor-pointer border-b border-line/70 align-top last:border-0 hover:bg-cream/60"
@@ -128,10 +147,15 @@ export function AdminInvoicesDueTable({ rows }: { rows: AdminInvoicesDueTableRow
           </tbody>
         </table>
       </div>
+      )}
       {open ? (
         <InvoiceDueEditorDrawer
           row={open}
           onClose={() => setOpenId(null)}
+          onSaved={(saved) => {
+            setSavedByInvoiceId((current) => ({ ...current, [open.invoiceId]: saved }));
+            setOpenId(null);
+          }}
         />
       ) : null}
     </>
@@ -141,9 +165,11 @@ export function AdminInvoicesDueTable({ rows }: { rows: AdminInvoicesDueTableRow
 function InvoiceDueEditorDrawer({
   row,
   onClose,
+  onSaved,
 }: {
   row: AdminInvoicesDueTableRow;
   onClose: () => void;
+  onSaved: (invoice: AdminInvoiceEditorInvoice) => void;
 }) {
   const titleId = useId();
   return (
@@ -185,6 +211,10 @@ function InvoiceDueEditorDrawer({
             depositPaidCents={row.editor.depositPaidCents}
             invoice={row.editor.invoice}
             onCancel={onClose}
+            onSaved={(saved) => {
+              if (saved) onSaved(saved);
+              else onClose();
+            }}
           />
           <p className="mt-4 text-xs text-muted">
             Need the full job record?{" "}

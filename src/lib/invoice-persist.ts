@@ -14,6 +14,8 @@ export type InvoicePaymentRow = {
   id: string;
   status: string;
   amountCents: number;
+  type?: string;
+  stripeCheckoutSessionId?: string | null;
 };
 
 export type ExistingInvoiceRow = {
@@ -35,6 +37,8 @@ export type PersistInvoiceInput = {
   note: string | null;
   publish: boolean;
   omitMarkupColumns?: boolean;
+  /** Booking ledger rows — used to find a pending BALANCE if Invoice.paymentId is missing or points at a deposit. */
+  bookingPayments?: InvoicePaymentRow[];
 };
 
 export type BalancePaymentPlan =
@@ -45,12 +49,33 @@ export type BalancePaymentPlan =
 
 export function invoiceLockedReason(existing: {
   status: string;
-  payment?: { status: string } | null;
+  payment?: { status: string; type?: string } | null;
 } | null): string | null {
   if (!existing) return null;
   if (invoiceIsLocked(existing.status)) return "This invoice is already paid to TOD.";
-  if (existing.payment?.status === "PAID") return "This invoice is already paid to TOD.";
+  const payment = existing.payment;
+  if (payment?.status === "PAID" && payment.type !== "DEPOSIT") {
+    return "This invoice is already paid to TOD.";
+  }
   return null;
+}
+
+export function isPendingBalancePayment(payment: InvoicePaymentRow | null | undefined): boolean {
+  if (!payment || payment.status !== "PENDING") return false;
+  return !payment.type || payment.type === "BALANCE";
+}
+
+/**
+ * Prefer the invoice-linked pending BALANCE. If that link is missing or points at a
+ * paid deposit, reuse the booking's pending BALANCE so we never leave a stale Checkout amount.
+ */
+export function resolveBalancePayment(input: {
+  linked?: InvoicePaymentRow | null;
+  bookingPayments?: InvoicePaymentRow[] | null;
+}): InvoicePaymentRow | null {
+  if (isPendingBalancePayment(input.linked)) return input.linked ?? null;
+  const fromBooking = (input.bookingPayments ?? []).find((payment) => isPendingBalancePayment(payment));
+  return fromBooking ?? null;
 }
 
 export function planBalancePayment(input: {
@@ -107,7 +132,6 @@ export async function persistInvoiceEdits(tx: Prisma.TransactionClient, input: P
           note: input.note,
           sentAt: publish ? (existing.sentAt ?? now) : existing.sentAt,
           paidAt: nextStatus === "PAID" ? (existing.paidAt ?? now) : null,
-          lines: { deleteMany: {} },
         },
       })
     : await tx.invoice.create({
@@ -123,22 +147,28 @@ export async function persistInvoiceEdits(tx: Prisma.TransactionClient, input: P
         },
       });
 
-  await tx.invoiceLine.createMany({
-    data: input.lines.map((line, index) => ({
-      invoiceId: saved.id,
-      kind: line.kind,
-      description: line.description,
-      quantity: line.quantity,
-      unitCents: line.unitCents,
-      amountCents: line.amountCents,
-      sortOrder: index,
-    })),
-  });
+  await tx.invoiceLine.deleteMany({ where: { invoiceId: saved.id } });
+  if (input.lines.length > 0) {
+    await tx.invoiceLine.createMany({
+      data: input.lines.map((line, index) => ({
+        invoiceId: saved.id,
+        kind: line.kind,
+        description: line.description,
+        quantity: line.quantity,
+        unitCents: line.unitCents,
+        amountCents: line.amountCents,
+        sortOrder: index,
+      })),
+    });
+  }
 
   const plan = planBalancePayment({
     publish,
     amountDueCents: totals.amountDueCents,
-    existingPayment: existing?.payment ?? null,
+    existingPayment: resolveBalancePayment({
+      linked: existing?.payment ?? null,
+      bookingPayments: input.bookingPayments,
+    }),
     publicId: saved.publicId,
     depositPaidCents: totals.depositPaidCents,
     subtotalCents: totals.subtotalCents,

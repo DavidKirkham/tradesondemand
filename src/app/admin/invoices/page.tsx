@@ -4,12 +4,10 @@ import { AdminSearch } from "@/components/admin/AdminSearch";
 import { searchNeedle } from "@/lib/admin";
 import {
   filterInvoicesDue,
-  invoicesDueTotalCents,
   loadInvoicesDue,
   parseInvoiceDueSort,
   toAdminInvoiceDueTableRow,
 } from "@/lib/admin-invoices-due";
-import { formatUsd } from "@/lib/money";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +28,6 @@ export default async function AdminInvoicesDuePage({
 async function InvoicesDueList({ q, sort }: { q: string; sort: "oldest" | "amount" }) {
   if (!(await isOpsAuthenticated())) return null;
   const invoices = filterInvoicesDue(await loadInvoicesDue(sort), q);
-  const totalCents = invoicesDueTotalCents(invoices);
   const rows = invoices.map(toAdminInvoiceDueTableRow);
 
   return (
@@ -66,13 +63,7 @@ async function InvoicesDueList({ q, sort }: { q: string; sort: "oldest" | "amoun
           {q ? "No invoices match that search." : "Nothing is owed to TOD right now."}
         </p>
       ) : (
-        <>
-          <p className="mt-6 text-sm font-semibold text-navy">
-            {invoices.length} {invoices.length === 1 ? "invoice" : "invoices"} · customer owes{" "}
-            {formatUsd(totalCents)}
-          </p>
-          <AdminInvoicesDueTable rows={rows} />
-        </>
+        <AdminInvoicesDueTable rows={rows} />
       )}
     </div>
   );

@@ -209,6 +209,30 @@ export function filterInvoicesDue(rows: AdminInvoiceDueRow[], q: string): AdminI
   });
 }
 
+export function applySavedInvoiceToDueRow<T extends AdminInvoiceDueRow | Omit<AdminInvoiceDueRow, "sentAt" | "createdAt">>(
+  row: T,
+  saved: AdminInvoiceDueEditor["invoice"],
+): T | null {
+  if (saved.status === "PAID" || saved.amountDueCents <= 0) return null;
+  const discountCents = saved.lines
+    .filter((line) => line.kind === "DISCOUNT")
+    .reduce((sum, line) => sum + line.amountCents, 0);
+  return {
+    ...row,
+    status: saved.status,
+    amountDueCents: saved.amountDueCents,
+    shopSubtotalCents: saved.subtotalCents,
+    customerSubtotalCents: saved.customerSubtotalCents,
+    markupCents: saved.markupCents,
+    discountCents,
+    hasMarkup: saved.customerSubtotalCents > 0,
+    editor: {
+      ...row.editor,
+      invoice: saved,
+    },
+  };
+}
+
 export function invoicesDueTotalCents(rows: Pick<AdminInvoiceDueRow, "amountDueCents">[]): number {
   return rows.reduce((sum, row) => sum + row.amountDueCents, 0);
 }

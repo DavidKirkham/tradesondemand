@@ -18,8 +18,10 @@ export function AdminInvoiceSection({
   depositPaidCents: number;
   invoice: AdminInvoiceEditorInvoice;
 }) {
-  const locked = invoiceIsLocked(invoice.status);
   const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState<AdminInvoiceEditorInvoice | null>(null);
+  const display = saved ?? invoice;
+  const locked = invoiceIsLocked(display.status);
 
   useEffect(() => {
     if (window.location.hash === "#invoice") {
@@ -27,8 +29,19 @@ export function AdminInvoiceSection({
     }
   }, []);
 
+  useEffect(() => {
+    if (saved && invoice.amountDueCents === saved.amountDueCents && invoice.status === saved.status) {
+      setSaved(null);
+    }
+  }, [invoice, saved]);
+
   function openEditor() {
     setEditing(true);
+  }
+
+  function handleSaved(next?: AdminInvoiceEditorInvoice) {
+    if (next) setSaved(next);
+    setEditing(false);
   }
 
   return (
@@ -57,33 +70,34 @@ export function AdminInvoiceSection({
           <AdminInvoiceEditor
             jobId={jobId}
             depositPaidCents={depositPaidCents}
-            invoice={invoice}
+            invoice={display}
             onCancel={locked ? undefined : () => setEditing(false)}
+            onSaved={handleSaved}
           />
         </div>
       ) : (
         <div className="mt-3">
           <InvoiceBreakdown
-            publicId={invoice.publicId}
-            status={invoice.status}
-            lines={invoice.lines}
-            laborCents={invoice.laborCents}
-            materialsCents={invoice.materialsCents}
-            subtotalCents={invoice.subtotalCents}
-            customerSubtotalCents={invoice.customerSubtotalCents}
-            markupCents={invoice.markupCents}
-            depositPaidCents={invoice.depositPaidCents}
-            amountDueCents={invoice.amountDueCents}
+            publicId={display.publicId}
+            status={display.status}
+            lines={display.lines}
+            laborCents={display.laborCents}
+            materialsCents={display.materialsCents}
+            subtotalCents={display.subtotalCents}
+            customerSubtotalCents={display.customerSubtotalCents}
+            markupCents={display.markupCents}
+            depositPaidCents={display.depositPaidCents}
+            amountDueCents={display.amountDueCents}
             amountDue={
               <button
                 type="button"
                 onClick={openEditor}
                 className="font-semibold text-ember underline decoration-ember/40 underline-offset-2 hover:decoration-ember"
               >
-                {formatUsd(invoice.amountDueCents)}
+                {formatUsd(display.amountDueCents)}
               </button>
             }
-            note={invoice.note}
+            note={display.note}
             variant="admin"
           />
         </div>
