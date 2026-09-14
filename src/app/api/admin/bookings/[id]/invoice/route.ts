@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { saveAdminInvoice } from "@/lib/admin-invoice-edit";
 import { prismaFailureResponse } from "@/lib/api-errors";
 import { isMissingInvoiceMarkupColumn, isMissingInvoiceModel } from "@/lib/invoice-columns";
+import { revalidateInvoiceSurfaces } from "@/lib/invoice-revalidate";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,8 @@ export async function PATCH(
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
-    return NextResponse.json({ invoice: result.invoice });
+    revalidateInvoiceSurfaces(result.surfaces);
+    return NextResponse.json({ invoice: result.publicInvoice });
   } catch (error) {
     if (isMissingInvoiceMarkupColumn(error)) {
       return prismaFailureResponse(error, "Could not save that invoice. Try again.");

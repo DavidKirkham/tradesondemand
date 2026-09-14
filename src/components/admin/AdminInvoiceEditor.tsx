@@ -48,7 +48,7 @@ export function AdminInvoiceEditor({
   depositPaidCents: number;
   invoice: AdminInvoiceEditorInvoice;
   onCancel?: () => void;
-  onSaved?: () => void;
+  onSaved?: (invoice?: AdminInvoiceEditorInvoice) => void;
 }) {
   const router = useRouter();
   const initial = linesToFormState(invoice.lines);
@@ -83,18 +83,19 @@ export function AdminInvoiceEditor({
     setMessage("");
     const response = await fetch(`/api/admin/bookings/${encodeURIComponent(jobId)}/invoice`, {
       method: "PATCH",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ labor, materials, discounts, note: note.trim() || undefined }),
     });
-    const payload = await parseResponseJson<{ error?: string }>(response);
+    const payload = await parseResponseJson<{ error?: string; invoice?: AdminInvoiceEditorInvoice }>(response);
     setSaving(false);
     if (!response.ok) {
       setMessage(payload.error || "Could not save the invoice.");
       return;
     }
     setMessage("Invoice saved. The customer balance and pay link use the marked-up amount due.");
-    router.refresh();
-    onSaved?.();
+    onSaved?.(payload.invoice);
+    await router.refresh();
   }
 
   if (locked) {

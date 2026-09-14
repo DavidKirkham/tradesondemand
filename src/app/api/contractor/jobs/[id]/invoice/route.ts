@@ -110,6 +110,7 @@ async function saveContractorInvoice(
       note: parsed.note,
       publish,
       omitMarkupColumns,
+      bookingPayments: booking.payments,
     });
 
     if (publish && booking.status !== "COMPLETED") {

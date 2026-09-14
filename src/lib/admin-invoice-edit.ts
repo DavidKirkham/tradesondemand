@@ -1,11 +1,13 @@
-import { depositCreditCents, totalsFromLines, validateInvoicePayload } from "./invoice";
-import { isMissingInvoiceMarkupColumn } from "./invoice-columns";
+import { depositCreditCents, toInvoiceLineDrafts, totalsFromLines, validateInvoicePayload } from "./invoice";
+import { isMissingInvoiceMarkupColumn, INVOICE_MARKUP_OMIT } from "./invoice-columns";
 import {
   invoiceLockedReason,
   persistInvoiceEdits,
   type ExistingInvoiceRow,
+  type InvoicePaymentRow,
   type PersistInvoiceInput,
 } from "./invoice-persist";
+import type { InvoiceRevalidateSurfaces } from "./invoice-revalidate";
 import { formatUsd } from "./money";
 import { prisma } from "./prisma";
 
@@ -19,10 +21,11 @@ export type AdminInvoicePayload = {
 export type AdminInvoiceJob = {
   id: string;
   publicId: string;
+  token?: string;
   status: string;
   customerId: string | null;
   contractorId: string | null;
-  payments: { id: string; amountCents: number; status: string }[];
+  payments: InvoicePaymentRow[];
 };
 
 export type PersistedAdminInvoice = Awaited<ReturnType<typeof persistInvoiceEdits>>;
@@ -35,8 +38,31 @@ export type AdminInvoiceStore = {
   ) => Promise<PersistedAdminInvoice>;
 };
 
+export type PublicAdminInvoice = {
+  id: string;
+  publicId: string;
+  bookingId: string;
+  status: string;
+  note: string | null;
+  laborCents: number;
+  materialsCents: number;
+  subtotalCents: number;
+  customerSubtotalCents: number;
+  markupCents: number;
+  depositPaidCents: number;
+  amountDueCents: number;
+  lines: ReturnType<typeof toInvoiceLineDrafts>;
+  payment: {
+    id: string;
+    status: string;
+    amountCents: number;
+    type?: string;
+    stripeCheckoutSessionId?: string | null;
+  } | null;
+};
+
 export type SaveAdminInvoiceResult =
-  | { ok: true; invoice: PersistedAdminInvoice }
+  | { ok: true; invoice: PersistedAdminInvoice; publicInvoice: PublicAdminInvoice; surfaces: InvoiceRevalidateSurfaces }
   | { ok: false; status: 400 | 404; error: string };
 
 export function defaultAdminInvoiceStore(): AdminInvoiceStore {
@@ -47,18 +73,16 @@ export function defaultAdminInvoiceStore(): AdminInvoiceStore {
         select: {
           id: true,
           publicId: true,
+          token: true,
           status: true,
           customerId: true,
           contractorId: true,
-          payments: { select: { id: true, amountCents: true, status: true } },
+          payments: { select: { id: true, amountCents: true, status: true, type: true, stripeCheckoutSessionId: true } },
         },
       });
     },
     async findInvoice(bookingId) {
-      return prisma.invoice.findUnique({
-        where: { bookingId },
-        include: { payment: { select: { id: true, status: true, amountCents: true } } },
-      });
+      return loadInvoiceForAdminEdit(bookingId);
     },
     async persist(input) {
       try {
@@ -68,6 +92,57 @@ export function defaultAdminInvoiceStore(): AdminInvoiceStore {
         return writeAdminInvoice({ ...input, omitMarkupColumns: true });
       }
     },
+  };
+}
+
+export async function loadInvoiceForAdminEdit(bookingId: string): Promise<ExistingInvoiceRow | null> {
+  const paymentSelect = {
+    id: true,
+    status: true,
+    amountCents: true,
+    type: true,
+    stripeCheckoutSessionId: true,
+  } as const;
+  try {
+    return await prisma.invoice.findUnique({
+      where: { bookingId },
+      include: { payment: { select: paymentSelect } },
+    });
+  } catch (error) {
+    if (!isMissingInvoiceMarkupColumn(error)) throw error;
+    const invoice = await prisma.invoice.findUnique({
+      where: { bookingId },
+      omit: INVOICE_MARKUP_OMIT,
+      include: { payment: { select: paymentSelect } },
+    });
+    return invoice;
+  }
+}
+
+export function publicAdminInvoice(invoice: PersistedAdminInvoice): PublicAdminInvoice {
+  return {
+    id: invoice.id,
+    publicId: invoice.publicId,
+    bookingId: invoice.bookingId,
+    status: invoice.status,
+    note: invoice.note,
+    laborCents: invoice.laborCents,
+    materialsCents: invoice.materialsCents,
+    subtotalCents: invoice.subtotalCents,
+    customerSubtotalCents: invoice.customerSubtotalCents ?? 0,
+    markupCents: invoice.markupCents ?? 0,
+    depositPaidCents: invoice.depositPaidCents,
+    amountDueCents: invoice.amountDueCents,
+    lines: toInvoiceLineDrafts(invoice.lines ?? []),
+    payment: invoice.payment
+      ? {
+          id: invoice.payment.id,
+          status: invoice.payment.status,
+          amountCents: invoice.payment.amountCents,
+          type: invoice.payment.type,
+          stripeCheckoutSessionId: invoice.payment.stripeCheckoutSessionId ?? null,
+        }
+      : null,
   };
 }
 
@@ -91,7 +166,7 @@ export async function saveAdminInvoice(
   const depositPaidCents = depositCreditCents(job.payments, existing.paymentId);
   const totals = totalsFromLines(parsed.lines, depositPaidCents);
   const publish = existing.status === "SENT";
-  const invoice = await store.persist({
+  const persistInput: PersistInvoiceInput & { jobStatus: string; eventNote: string } = {
     booking: { id: job.id, customerId: job.customerId },
     existing,
     contractorId: job.contractorId,
@@ -99,11 +174,18 @@ export async function saveAdminInvoice(
     totals,
     note: parsed.note,
     publish,
+    bookingPayments: job.payments,
     jobStatus: job.status,
     eventNote: `Invoice ${existing.publicId} updated by admin — customer owes TOD ${formatUsd(totals.amountDueCents)}`,
-  });
-
-  return { ok: true, invoice };
+  };
+  const invoice = await store.persist(persistInput);
+  const surfaces: InvoiceRevalidateSurfaces = {
+    jobId: job.id,
+    jobPublicId: job.publicId,
+    customerId: job.customerId,
+    statusToken: job.token ?? null,
+  };
+  return { ok: true, invoice, publicInvoice: publicAdminInvoice(invoice), surfaces };
 }
 
 async function writeAdminInvoice(
