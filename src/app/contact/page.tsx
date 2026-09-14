@@ -23,9 +23,7 @@ export default function ContactPage() {
         <div className="rounded-2xl border border-line bg-paper p-6">
           <p className="stamp text-xs text-muted">Phone</p>
           <p className="mt-2 font-display text-2xl text-navy">{phone}</p>
-          <p className="mt-2 text-sm text-muted">
-            Kansas City dispatch. Defaults to (816) 516-0735 without any env setup.
-          </p>
+          <p className="mt-2 text-sm text-muted">Kansas City dispatch.</p>
           <div className="mt-4">
             <CallButton />
           </div>
