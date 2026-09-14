@@ -336,8 +336,9 @@ export function ContractorSignupForm() {
         />
         <span>
           I confirm this application is accurate, I am licensed for the trades selected, and I agree
-          that customers pay Trades on Demand (TOD pays me). Bank payout details are coming later
-          — do not collect cards or cash as the merchant on TOD jobs.
+          that customers pay Trades on Demand (TOD pays me). After approval I will finish Stripe
+          Express onboarding in the contractor app so TOD can transfer my shop rate — do not collect
+          cards or cash as the merchant on TOD jobs.
         </span>
       </label>
 

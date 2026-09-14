@@ -61,6 +61,15 @@ export function appOriginFromRequest(request: Request): string {
   return new URL(request.url).origin;
 }
 
+export function appOriginFromHeaders(headers: Headers): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
+  if (configured) return configured;
+  const host = headers.get("x-forwarded-host") ?? headers.get("host");
+  if (!host) return "";
+  const proto = headers.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
 export function checkoutPaymentType(kind: "deposit" | "minimum" | "balance"): string {
   return kind;
 }

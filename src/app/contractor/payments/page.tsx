@@ -1,7 +1,14 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ContractorAppShell } from "@/components/contractor-app/ContractorAppShell";
+import { ContractorConnectOnboard } from "@/components/contractor-app/ContractorConnectOnboard";
 import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
+import {
+  createAccountLinkForRefresh,
+  refreshContractorConnectFromStripe,
+} from "@/lib/contractor-connect";
 import {
   CONTRACTOR_PAYOUT_COPY,
   contractorJobPaymentLabel,
@@ -9,15 +16,44 @@ import {
   sumContractorPayments,
 } from "@/lib/contractor-payments";
 import { requireApprovedContractor } from "@/lib/contractor-auth";
+import {
+  contractorConnectStatusCopy,
+  contractorConnectStatusLabel,
+  contractorPayoutStatusLabel,
+  isMissingContractorPayoutModel,
+} from "@/lib/contractor-payouts";
 import { formatUsd } from "@/lib/money";
 import { paymentStatusLabel, paymentTypeLabel } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
+import { appOriginFromHeaders } from "@/lib/stripe";
 import { getTrade } from "@/lib/trades";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContractorPaymentsPage() {
+export default async function ContractorPaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ connect?: string }>;
+}) {
   const contractor = await requireApprovedContractor("/contractor/payments");
+  const params = await searchParams;
+
+  if (params.connect === "refresh" || params.connect === "return") {
+    await refreshContractorConnectFromStripe(contractor.id);
+  }
+  if (params.connect === "refresh") {
+    const origin = appOriginFromHeaders(await headers());
+    const url = await createAccountLinkForRefresh(contractor, origin);
+    if (url) redirect(url);
+  }
+
+  const latest = await prisma.contractor.findUnique({ where: { id: contractor.id } });
+  const shop = latest ?? contractor;
+  const connectStatus = contractorConnectStatusLabel({
+    stripeConnectAccountId: shop.stripeConnectAccountId,
+    stripeConnectOnboarded: shop.stripeConnectOnboarded,
+    stripeConnectPayoutsEnabled: shop.stripeConnectPayoutsEnabled,
+  });
 
   const jobs = await prisma.booking.findMany({
     where: { contractorId: contractor.id },
@@ -26,21 +62,89 @@ export default async function ContractorPaymentsPage() {
     include: { payments: { orderBy: { createdAt: "desc" } } },
   });
 
+  let payouts: {
+    id: string;
+    publicId: string;
+    shopAmountCents: number;
+    status: string;
+    booking: { publicId: string; id: string };
+    invoice: { publicId: string };
+    failureMessage: string | null;
+  }[] = [];
+  try {
+    payouts = await prisma.contractorPayout.findMany({
+      where: { contractorId: contractor.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        booking: { select: { id: true, publicId: true } },
+        invoice: { select: { publicId: true } },
+      },
+    });
+  } catch (error) {
+    if (!isMissingContractorPayoutModel(error)) throw error;
+  }
+
   const history = jobs
     .flatMap((job) => job.payments.map((payment) => ({ ...payment, bookingPublicId: job.publicId, bookingId: job.id })))
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const totals = sumContractorPayments(history);
+  const earnedCents = payouts.reduce((sum, row) => sum + (row.status === "PAID" ? row.shopAmountCents : 0), 0);
+  const owedCents = payouts.reduce(
+    (sum, row) => sum + (row.status === "PENDING" || row.status === "FAILED" ? row.shopAmountCents : 0),
+    0,
+  );
 
   return (
     <ContractorAppShell businessName={contractor.businessName}>
-      <h1 className="font-display text-2xl text-navy">Payments</h1>
+      <h1 className="font-display text-2xl text-navy">Payouts</h1>
       <p className="mt-1 text-sm text-muted">{CONTRACTOR_PAYOUT_COPY}</p>
+      {params.connect === "return" ? (
+        <p className="mt-3 rounded-2xl border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-navy">
+          {contractorConnectStatusCopy(connectStatus)}. Stripe will text or email if anything else is needed.
+        </p>
+      ) : null}
+
+      <div className="mt-5">
+        <ContractorConnectOnboard status={connectStatus} />
+      </div>
 
       <section className="mt-5 grid grid-cols-2 gap-2">
+        <Stat label="Shop owed" value={formatUsd(owedCents)} />
+        <Stat label="Transferred" value={formatUsd(earnedCents)} />
         <Stat label="Paid to TOD" value={formatUsd(totals.paidCents)} />
         <Stat label="Pending with TOD" value={formatUsd(totals.pendingCents)} />
-        <Stat label="Refunded" value={formatUsd(totals.refundedCents)} />
-        <Stat label="Records" value={String(totals.count)} />
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Shop earnings</h2>
+        {payouts.length === 0 ? (
+          <p className="mt-2 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-muted">
+            Nothing owed yet. After a customer pays your invoice, the shop subtotal shows here for TOD to
+            transfer. The 20% markup never comes to you.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {payouts.map((payout) => (
+              <li key={payout.id} className="rounded-2xl border border-line bg-paper px-4 py-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-xs text-muted">
+                      {payout.publicId} · {payout.invoice.publicId}
+                    </p>
+                    <Link href={`/contractor/jobs/${payout.booking.id}`} className="font-semibold text-navy">
+                      {payout.booking.publicId}
+                    </Link>
+                    <p className="text-xs text-muted">{contractorPayoutStatusLabel(payout.status)}</p>
+                    {payout.failureMessage ? (
+                      <p className="mt-1 text-xs text-danger">{payout.failureMessage}</p>
+                    ) : null}
+                  </div>
+                  <p className="text-right font-semibold text-navy">{formatUsd(payout.shopAmountCents)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="mt-8">
@@ -64,7 +168,7 @@ export default async function ContractorPaymentsPage() {
                     </p>
                     {job.payments.length > 0 ? (
                       <p className="mt-1 text-sm text-navy">
-                        {formatUsd(sums.paidCents)} paid
+                        {formatUsd(sums.paidCents)} paid to TOD
                         {sums.pendingCents > 0 ? ` · ${formatUsd(sums.pendingCents)} pending` : ""}
                       </p>
                     ) : null}

@@ -10,7 +10,7 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 - **KC metro only.** Kansas City (MO and KS), Overland Park, Olathe, Independence, Lee’s Summit, Shawnee, Lenexa, Leawood, Blue Springs, Liberty, and nearby ZIPs. Non-metro cities and ZIPs are rejected with a clear message.
 - **Online booking + tap-to-call.** Dispatch number is **(816) 516-0735** (`tel:+18165160735`). Override with `NEXT_PUBLIC_DISPATCH_PHONE` or `NEXT_PUBLIC_PHONE` if needed; the UI works without env setup.
 - **Licensed contractors.** Partners apply at `/contractors/signup`. Admin approves/rejects at `/admin/contractors`. Approved shops get a public profile and can be chosen during booking.
-- **Marketplace payments.** Customer → **Trades on Demand / Trademark Walls** (Stripe Checkout) → contractor payout later. No Connect transfers in Phase 1. No pay-the-pro-directly flow.
+- **Marketplace payments.** Customer → **Trades on Demand / Trademark Walls** (Stripe Checkout, including 20% markup) → **separate charges and transfers** to the contractor’s Stripe Express account for the **shop amount** (`Invoice.subtotalCents`). TOD keeps the markup. No destination charges. No pay-the-pro-directly flow.
 - **v1 surfaces.** Customer booking (including contractor pick), password-protected `/account` portal (jobs + TOD pay), job status, contractor directory/profiles, `/admin` for clients + subcontractors + jobs, `/contractor` PWA for approved partners.
 
 ## Core booking loop
@@ -25,15 +25,17 @@ This repo was an empty README. v1 is a Next.js App Router product: guided bookin
 
 ## Marketplace payments
 
-Customers pay **Trades on Demand** for deposits, trip minimums, and later job balances. Contractors are paid by TOD (payouts). There is no “pay contractor directly” CTA, and contractor signup does not collect bank details in v1.
+Customers pay **Trades on Demand** for deposits, trip minimums, and later job balances. Contractors are paid by TOD via **Stripe Connect Express** transfers of the shop subtotal. There is no “pay contractor directly” CTA.
 
 `Payment` records belong to TOD (`bookingId`, amount, `DEPOSIT` | `BALANCE` | `ADJUSTMENT`, `PENDING` | `PAID` | `REFUNDED`, Stripe session/intent ids). The Stripe webhook is the source of truth for paid. Ops can still mark paid/refunded. Customer `/account` and job status show receipts + session id, not card numbers.
 
-After work is done, the assigned contractor sends a **time & materials invoice** (`Invoice` + `InvoiceLine` on the booking). Labor hours use the shop’s trade rate; materials are description + cost. Paid TOD deposits are credited; the remaining `amountDueCents` becomes a pending `BALANCE` payment. The customer sees the invoice on `/account/jobs/<id>` and pays through the same Stripe Checkout. Twilio texts a link to that page when the invoice is sent. Contractors never collect cards.
+After work is done, the assigned contractor sends a **time & materials invoice** (`Invoice` + `InvoiceLine` on the booking). Labor hours use the shop’s trade rate; materials are description + cost. Paid TOD deposits are credited against the **customer** total (shop + 20% markup). The remaining `amountDueCents` becomes a pending `BALANCE` payment. The customer sees the invoice on `/account/jobs/<id>` and pays through the same Stripe Checkout. Twilio texts a link to that page when the invoice is sent. Contractors never collect cards.
 
-## Stripe Checkout (Phase 1)
+**Shop payout rule:** when that invoice is `PAID`, TOD owes the contractor `Invoice.subtotalCents` (shop labor + materials). Customer deposits do not change that number — they only reduce what the customer still owes TOD. The 20% markup never transfers. `ContractorPayout` rows track PENDING / PAID / FAILED; admin transfers from `/admin/payouts`.
 
-Platform merchant of record: **Trademark Walls** sandbox (test mode). Do **not** use Stripe Connect `destination` / `transfer_data`. Checkout and `/api/stripe/webhook` read **only** `process.env` — there is no hardcoded secret key.
+## Stripe Checkout (platform merchant of record)
+
+Platform merchant of record: **Trademark Walls**. Do **not** use Stripe Connect `destination` / `transfer_data` on Checkout. Checkout and `/api/stripe/webhook` read **only** `process.env` — there is no hardcoded secret key. After Checkout succeeds, TOD creates a **Transfer** to the contractor’s Express account (separate charges and transfers). Live mode uses the same `STRIPE_SECRET_KEY` as Checkout.
 
 ### Publishable key (safe to commit)
 
@@ -65,7 +67,20 @@ Local webhook forward (prints a `whsec_` to put in `.env.local`):
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
-If secrets are missing the app still runs: bookings are created, deposits stay **pending**, and ops shows a configuration message. 
+If secrets are missing the app still runs: bookings are created, deposits stay **pending**, and ops shows a configuration message.
+
+### Stripe Connect Express (contractor payouts)
+
+Same `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` as Checkout (live or test). No extra Connect API key.
+
+**Dashboard (once per platform):**
+
+1. [Connect settings](https://dashboard.stripe.com/settings/connect) — enable Connect on the Trademark Walls account.
+2. [Platform profile](https://dashboard.stripe.com/settings/connect/platform-profile) — accept **platform owns pricing and loss liability** (required for separate charges and transfers / Express recipients).
+3. Branding on the Account Link form (name, color, icon).
+4. Webhook endpoint `/api/stripe/webhook` should also receive: `account.updated`, `v2.core.account.updated`, `transfer.created`, `transfer.updated`, `transfer.failed`, `transfer.reversed` (plus existing `checkout.session.completed` and `payment_intent.succeeded`).
+
+Approved shops open **Pay** on `/contractor`, tap **Set up Stripe payouts**, and complete Stripe-hosted Account Link onboarding. Admin transfers shop earnings from `/admin/payouts` once Connect shows transfers enabled. Destination charges are intentionally not used. 
 
 ## Stack
 
@@ -108,6 +123,8 @@ Prisma expects these folders, in order:
 | `prisma/migrations/20260913230000_customer_password` | `Customer.passwordHash`, `Customer.sessionToken`, SMS reset code columns |
 | `prisma/migrations/20260913240000_contractor_push_subscription` | `ContractorPushSubscription` (Web Push endpoints per approved shop) |
 | `prisma/migrations/20260913320000_job_invoice` | `Invoice` + `InvoiceLine` (contractor T&M invoice, optional `paymentId` to the TOD balance; `contractorId` SET NULL on shop delete) |
+| `prisma/migrations/20260914010000_invoice_platform_markup` | `Invoice.customerSubtotalCents`, `Invoice.markupCents` (20% TOD markup stored on the invoice) |
+| `prisma/migrations/20260914120000_contractor_connect_payouts` | `Contractor.stripeConnectAccountId`, `stripeConnectOnboarded`, `stripeConnectPayoutsEnabled`; `ContractorPayout` (shop earnings PENDING/PAID/FAILED + `stripeTransferId`) |
 
 Exact production command (`prisma migrate deploy` via the env wrapper):
 
@@ -266,11 +283,11 @@ A pending demo (`casey@pending.example` / `8165550199`) is rejected at the door.
 5. **Past** — completed `TOD-DONE01` (seeded invoice `INV-DONE01`) and cancelled `TOD-CXL01`.  
 6. **Invoice** — on an assigned job, fill labor hours (rate prefilled from the shop trade rate) + material lines, see deposit credit and TOD total, **Save draft** or **Send invoice**. Send marks the job complete, creates a pending TOD balance, and texts the customer `/account/jobs/<publicId>`.  
 7. **SMS** — text only on jobs you own; 555 numbers skip; missing Twilio still saves the note / invoice.  
-8. **Pay** — per-job pending/paid/refunded from `Payment` rows + history. Copy states payouts are via TOD.  
+8. **Pay** — Stripe Express **Get paid** (Account Link), shop earnings owed/transferred, plus per-job customer payment to TOD.  
 9. **Profile** — edit contact, coverage, rates, bio → Save. Change password with the current password.  
 10. **Job push** — on Profile tap **Enable job push** (or the header link). Assign `TOD-OPEN01` to Waldo from `/admin` (or book that shop). A push should fire if VAPID keys are set; otherwise Twilio texts the shop phone when configured. Tap the notification → `/contractor/jobs/<id>`.
 
-Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancelled), **SMS** (text customers on jobs you own), job detail (**Accept**, En route / On site / Done, arrival text, **time & materials invoice**), **Profile** (business contact, coverage, rates, bio), and **Pay** (per-job TOD payment status + Payment history). Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site. Payouts are via TOD; the Pay page does not invent Stripe Connect.
+Inside the app: **Jobs** (open assigned + available), **Past** (completed/cancelled), **SMS** (text customers on jobs you own), job detail (**Accept**, En route / On site / Done, arrival text, **time & materials invoice**), **Profile** (business contact, coverage, rates, bio), and **Pay** (Express onboarding + shop earnings + TOD payment history). Available cards show neighborhood/ZIP + a problem summary — full street and customer phone appear after accept (or after admin assign). Customers still pay TOD — the app says not to collect on site. Shop payouts are Stripe Connect Express transfers of the invoice subtotal.
 
 **Seeded completed invoice:** `TOD-DONE01` / `INV-DONE01` — 1.5 hr HVAC labor at $110 + $199 blower motor = $364, $189 paid deposit credited, **$175.00** pending TOD balance (`PAY-DONEBAL`). Customer Riley can open `/account/jobs/TOD-DONE01` and pay. Production **must** apply `20260913320000_job_invoice` (`npm run db:migrate`) or invoice save/load will fail against a missing table.
 
@@ -309,8 +326,8 @@ npx prisma db seed
 | `ADMIN_PASSWORD` | Runtime (Vercel) | Password for `/admin`. Set on Vercel for Production + Preview. No code default. |
 | `OPS_PASSWORD` | Compat | Used only if `ADMIN_PASSWORD` is unset. `/ops` redirects to `/admin`. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Trademark Walls sandbox. Default `pk_test_51UF1qLJOVLPQ6426…` (safe client-side). |
-| `STRIPE_SECRET_KEY` | For Checkout | Server-only. Empty = graceful degrade |
-| `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint |
+| `STRIPE_SECRET_KEY` | For Checkout + Connect | Server-only. Same key for platform Checkout and Express transfers. Empty = graceful degrade |
+| `STRIPE_WEBHOOK_SECRET` | For webhooks | From `stripe listen` or Dashboard endpoint. Subscribe to Checkout, account, and transfer events. |
 | `TWILIO_ACCOUNT_SID` | For SMS | Twilio Account SID (`AC…`). Used only in the Messages API path. Required whenever SMS is enabled. |
 | `TWILIO_API_KEY_SID` / `TWILIO_API_KEY_SECRET` | For SMS (preferred) | API Key SID (`SK…`) + secret for Basic auth. When both are set they are used instead of the Auth Token. |
 | `TWILIO_AUTH_TOKEN` | For SMS (fallback) | Account Auth Token. Used for Basic auth when API key SID+secret are not both set. |
@@ -331,11 +348,13 @@ npx prisma db seed
 | `/account` `/account/login` `/account/forgot` `/account/jobs/[id]` `/account/profile` | **Customer portal** — password login, jobs past/present, T&M invoice, TOD Checkout |
 | `/account/[token]` `/account/s/[token]` | One-time set-password invite (not a passwordless session) |
 | `/status` `/status/[token]` | Customer job status |
-| `/contractor` `/contractor/forgot` `/contractor/r/[token]` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — sign-in, forgot-password SMS reset, current jobs, past jobs, T&M invoice, SMS, TOD payment status, profile |
-| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` | **Owner backend** — review/edit/delete clients, subcontractors, and jobs (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
+| `/contractor` `/contractor/forgot` `/contractor/r/[token]` `/contractor/jobs/[id]` `/contractor/past` `/contractor/messages` `/contractor/payments` `/contractor/profile` | **Approved contractor PWA** — sign-in, forgot-password SMS reset, current jobs, past jobs, T&M invoice, SMS, Express Get paid + shop earnings, profile |
+| `/admin` `/admin/clients` `/admin/contractors` `/admin/jobs` `/admin/jobs/[id]` `/admin/invoices` `/admin/payouts` | **Owner backend** — clients, subcontractors, jobs, invoices due, shop payouts queue (`ADMIN_PASSWORD` or `OPS_PASSWORD`) |
 | `/ops` | Redirects to `/admin` |
 | `/api/bookings` | Create booking + optional Checkout Session |
-| `/api/stripe/webhook` | Stripe signature-verified payment updates |
+| `/api/stripe/webhook` | Stripe signature-verified Checkout + Connect account/transfer updates |
+| `/api/contractor/connect` | Approved contractor Express Account Link / status |
+| `/api/admin/payouts/[id]/transfer` | Admin-triggered Transfer of shop earnings |
 | `/api/contractors` | Public list (approved) + signup POST |
 | `/api/status/[token]` | Lookup by job ID or token |
 | `/api/account/*` | Customer portal session (`tod_customer_session`, distinct from contractor/admin) |

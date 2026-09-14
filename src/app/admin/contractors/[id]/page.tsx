@@ -9,6 +9,7 @@ import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
 import { contractorOffersTrade, jobIsAssignable } from "@/lib/admin-assign";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { contractorStatusLabel, parseTradeRatesJson, parseTradesJson } from "@/lib/contractor";
+import { contractorConnectStatusCopy, contractorConnectStatusLabel } from "@/lib/contractor-payouts";
 import { isPastContractorJob } from "@/lib/contractor-app";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
@@ -107,6 +108,29 @@ async function ContractorDetail({ id }: { id: string }) {
         passwordSet={Boolean(contractor.passwordHash)}
         invitePath={contractor.passwordHash ? null : `/contractor/s/${contractor.loginToken}`}
       />
+
+      <section className="rounded-2xl border border-line bg-paper p-5">
+        <h2 className="font-display text-xl text-navy">Stripe Express</h2>
+        <p className="mt-1 text-sm text-muted">
+          {contractorConnectStatusCopy(
+            contractorConnectStatusLabel({
+              stripeConnectAccountId: contractor.stripeConnectAccountId,
+              stripeConnectOnboarded: contractor.stripeConnectOnboarded,
+              stripeConnectPayoutsEnabled: contractor.stripeConnectPayoutsEnabled,
+            }),
+          )}
+          . Shop earnings transfer from{" "}
+          <Link href="/admin/payouts" className="font-semibold text-ember">
+            Payouts
+          </Link>
+          .
+        </p>
+        {contractor.stripeConnectAccountId ? (
+          <p className="mt-2 font-mono text-xs text-muted">{contractor.stripeConnectAccountId}</p>
+        ) : (
+          <p className="mt-2 text-sm text-muted">This shop has not started Connect onboarding from /contractor.</p>
+        )}
+      </section>
 
       <AdminContractorEditor
         key={`${contractor.id}-${contractor.status}`}

@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/admin/contractors", label: "Subcontractors" },
   { href: "/admin/jobs", label: "Jobs" },
   { href: "/admin/invoices", label: "Invoices due" },
+  { href: "/admin/payouts", label: "Payouts" },
 ];
 
 function isActive(pathname: string, href: string) {

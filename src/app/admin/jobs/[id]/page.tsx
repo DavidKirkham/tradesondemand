@@ -5,6 +5,7 @@ import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminInvoiceSection } from "@/components/admin/AdminInvoiceSection";
 import { AdminJobDelete } from "@/components/admin/AdminJobDelete";
 import { AdminJobStatus } from "@/components/admin/AdminJobStatus";
+import { AdminPayoutTransfer } from "@/components/admin/AdminPayoutTransfer";
 import { blockingJobPayments } from "@/lib/admin-job-delete";
 import { statusLabel } from "@/lib/booking";
 import { BOOKING_SMS_OMIT, isMissingBookingSmsColumn } from "@/lib/booking-sms-columns";
@@ -15,6 +16,8 @@ import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { formatPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getTrade } from "@/lib/trades";
+import { contractorPayoutStatusLabel, isMissingContractorPayoutModel } from "@/lib/contractor-payouts";
+import { formatUsd } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +85,30 @@ async function JobDetail({ id }: { id: string }) {
     trades: parseTradesJson(row.tradesJson),
   }));
   const invoice = await loadBookingInvoice(job.id);
+  let payout: {
+    id: string;
+    publicId: string;
+    shopAmountCents: number;
+    status: string;
+    failureMessage: string | null;
+    stripeTransferId: string | null;
+    contractor: {
+      stripeConnectAccountId: string | null;
+      stripeConnectPayoutsEnabled: boolean;
+    } | null;
+    invoice: { status: string };
+  } | null = null;
+  try {
+    payout = await prisma.contractorPayout.findFirst({
+      where: { bookingId: job.id },
+      include: {
+        contractor: { select: { stripeConnectAccountId: true, stripeConnectPayoutsEnabled: true } },
+        invoice: { select: { status: true } },
+      },
+    });
+  } catch (error) {
+    if (!isMissingContractorPayoutModel(error)) throw error;
+  }
 
   return (
     <div className="space-y-6">
@@ -165,6 +192,33 @@ async function JobDetail({ id }: { id: string }) {
             lines: toInvoiceLineDrafts(invoice.lines),
           }}
         />
+      ) : null}
+
+      {payout ? (
+        <section className="rounded-2xl border border-line bg-paper p-5">
+          <h2 className="font-display text-xl text-navy">Shop payout</h2>
+          <p className="mt-1 text-sm text-muted">
+            {payout.publicId} · {contractorPayoutStatusLabel(payout.status)} · shop{" "}
+            {formatUsd(payout.shopAmountCents)} (markup stays with TOD)
+          </p>
+          {payout.failureMessage ? <p className="mt-2 text-sm text-danger">{payout.failureMessage}</p> : null}
+          {payout.stripeTransferId ? (
+            <p className="mt-2 font-mono text-xs text-muted">{payout.stripeTransferId}</p>
+          ) : (
+            <div className="mt-3">
+              <AdminPayoutTransfer
+                payoutId={payout.id}
+                canTransfer={
+                  (payout.status === "PENDING" || payout.status === "FAILED") &&
+                  payout.invoice.status === "PAID" &&
+                  Boolean(payout.contractor?.stripeConnectAccountId) &&
+                  Boolean(payout.contractor?.stripeConnectPayoutsEnabled)
+                }
+                label={payout.status === "FAILED" ? "Retry transfer" : "Transfer shop amount"}
+              />
+            </div>
+          )}
+        </section>
       ) : null}
 
       <section className="rounded-2xl border border-line bg-paper p-5">

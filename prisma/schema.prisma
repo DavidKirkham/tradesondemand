@@ -37,6 +37,7 @@ model Booking {
   events          StatusEvent[]
   payments        Payment[]
   invoice         Invoice?
+  payouts         ContractorPayout[]
 }
 
 model StatusEvent {
@@ -76,10 +77,14 @@ model Contractor {
   loginToken         String    @unique
   passwordHash       String?
   sessionToken       String?   @unique
+  stripeConnectAccountId      String?   @unique
+  stripeConnectOnboarded      Boolean   @default(false)
+  stripeConnectPayoutsEnabled Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   bookings           Booking[]
   invoices           Invoice[]
+  payouts            ContractorPayout[]
   passwordReset      ContractorPasswordReset?
   pushSubscriptions  ContractorPushSubscription[]
 }
@@ -173,8 +178,31 @@ model Invoice {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   lines            InvoiceLine[]
+  payout           ContractorPayout?
 
   @@index([contractorId])
+}
+
+model ContractorPayout {
+  id               String      @id @default(cuid())
+  publicId         String      @unique
+  contractorId     String?
+  contractor       Contractor? @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  bookingId        String
+  booking          Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  invoiceId        String      @unique
+  invoice          Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  shopAmountCents  Int
+  status           String      @default("PENDING")
+  stripeTransferId String?     @unique
+  failureMessage   String?
+  transferredAt    DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([contractorId])
+  @@index([bookingId])
+  @@index([status])
 }
 
 model InvoiceLine {
