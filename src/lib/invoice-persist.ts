@@ -49,7 +49,7 @@ export type BalancePaymentPlan =
 
 export function invoiceLockedReason(existing: {
   status: string;
-  payment?: { status: string; type?: string } | null;
+  payment?: InvoicePaymentRow | { status: string; type?: string | null } | null;
 } | null): string | null {
   if (!existing) return null;
   if (invoiceIsLocked(existing.status)) return "This invoice is already paid to TOD.";
