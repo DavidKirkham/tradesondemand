@@ -24,12 +24,6 @@ export default function AboutPage() {
           that is how you keep arrival times honest. If your ZIP is Wichita, Columbia, or Topeka,
           we will say no in the form instead of taking a deposit and hoping.
         </p>
-        <p>
-          v1 is the customer booking loop, public profiles for approved licensed partners, an
-          owner admin, and a contractor PWA at /contractor. Licensed MO/KS contractors apply at
-          /contractors/signup; after approval they sign in on their phone with a password. You pay
-          Trades on Demand; we pay the partner. SMS is out of scope.
-        </p>
       </div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <Link
