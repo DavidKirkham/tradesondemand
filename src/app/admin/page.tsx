@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { AdminJobAssignCard } from "@/components/admin/AdminJobAssignCard";
+import { countInvoicesDue } from "@/lib/admin-invoices-due";
 import { BOOKING_SMS_OMIT } from "@/lib/booking-sms-columns";
 import { contractorStatusLabel, parseTradesJson } from "@/lib/contractor";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
@@ -18,11 +19,12 @@ export default async function AdminHomePage() {
 
 async function AdminOverview() {
   if (!(await isOpsAuthenticated())) return null;
-  const [clientCount, contractorGroups, jobCount, pendingContractors, recentClients, unassigned, approved] =
+  const [clientCount, contractorGroups, jobCount, invoicesDueCount, pendingContractors, recentClients, unassigned, approved] =
     await Promise.all([
       prisma.customer.count(),
       prisma.contractor.groupBy({ by: ["status"], _count: { _all: true } }),
       prisma.booking.count(),
+      countInvoicesDue(),
       prisma.contractor.findMany({
         where: { status: "PENDING" },
         orderBy: { createdAt: "desc" },
@@ -66,7 +68,7 @@ async function AdminOverview() {
         . Approve shops before they show on /contractors.
       </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat href="/admin/clients" label="Clients" value={clientCount} />
         <Stat
           href="/admin/contractors"
@@ -74,6 +76,7 @@ async function AdminOverview() {
           value={`${byStatus.PENDING ?? 0} pending · ${byStatus.APPROVED ?? 0} live`}
         />
         <Stat href="/admin/jobs" label="Jobs" value={jobCount} />
+        <Stat href="/admin/invoices" label="Invoices due" value={invoicesDueCount} />
       </div>
 
       <section className="mt-8 space-y-3">
