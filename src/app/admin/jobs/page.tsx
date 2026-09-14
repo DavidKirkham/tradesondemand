@@ -73,12 +73,25 @@ async function JobsList({ q, status, deleted }: { q: string; status: string; del
 
   return (
     <div>
-      <p className="stamp text-xs text-ember">Dispatch</p>
-      <h1 className="font-display text-3xl text-navy">Jobs</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="stamp text-xs text-ember">Dispatch</p>
+          <h1 className="font-display text-3xl text-navy">Jobs</h1>
+        </div>
+        <Link
+          href="/admin/new-job"
+          className="inline-flex h-11 items-center rounded-full bg-ember px-5 text-sm font-semibold text-white"
+        >
+          Take a call
+        </Link>
+      </div>
       <p className="mt-2 text-sm text-muted">
         Assign each job to an approved subcontractor with the picker on the card. Reassignment asks
-        for confirmation. The shop then sees the ticket under /contractor. Delete a job from its
-        detail page after typing the job ID.
+        for confirmation. The shop then sees the ticket under /contractor. Phone jobs use{" "}
+        <Link href="/admin/new-job" className="font-semibold text-ember">
+          Take a call
+        </Link>{" "}
+        to create and assign in one step. Delete a job from its detail page after typing the job ID.
       </p>
       {deleted ? (
         <p className="mt-4 rounded-2xl border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-navy">

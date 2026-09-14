@@ -61,11 +61,23 @@ async function AdminOverview() {
       <p className="stamp text-xs text-ember">Owner backend</p>
       <h1 className="font-display text-3xl text-navy">Clients &amp; subcontractors</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Private records only. Assign a job to an approved subcontractor here or under{" "}
+        Private records only. After a phone call,{" "}
+        <Link href="/admin/new-job" className="font-semibold text-ember">
+          Take a call
+        </Link>{" "}
+        creates the job and assigns a contractor. Assign existing tickets here or under{" "}
         <Link href="/admin/jobs" className="font-semibold text-ember">
           Jobs
         </Link>
         . Approve shops before they show on /contractors.
+      </p>
+      <p className="mt-4">
+        <Link
+          href="/admin/new-job"
+          className="inline-flex h-11 items-center rounded-full bg-ember px-5 text-sm font-semibold text-white"
+        >
+          Take a call / assign contractor
+        </Link>
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
