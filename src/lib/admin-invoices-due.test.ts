@@ -91,10 +91,75 @@ describe("outstandingInvoicesDue", () => {
       shopSubtotalCents: 36400,
       customerSubtotalCents: 43680,
       markupCents: 7280,
+      discountCents: 0,
       hasMarkup: true,
       status: "SENT",
+      sentAtLabel: "Sep 1, 2026",
+      editor: {
+        jobId: "job_1",
+        depositPaidCents: 22680,
+        invoice: {
+          publicId: "INV-DONE01",
+          status: "SENT",
+          amountDueCents: 21000,
+          lines: [],
+        },
+      },
     });
     expect(adminInvoiceDueHref("job_1")).toBe("/admin/jobs/job_1#invoice");
+  });
+
+  it("embeds shop discount lines so the due list can open the editor in place", () => {
+    const [row] = outstandingInvoicesDue([
+      invoice({
+        paymentId: "pay_bal",
+        lines: [
+          {
+            kind: "LABOR",
+            description: "HVAC labor",
+            quantity: "2",
+            unitCents: 11000,
+            amountCents: 22000,
+          },
+          {
+            kind: "DISCOUNT",
+            description: "Goodwill",
+            quantity: "1",
+            unitCents: -5000,
+            amountCents: -5000,
+          },
+        ],
+        booking: {
+          id: "job_1",
+          publicId: "TOD-DONE01",
+          customerName: "Alex Kim",
+          customer: { id: "cus_1", name: "Alex Kim" },
+          contractor: { id: "con_1", businessName: "Waldo Heat" },
+          payments: [
+            { id: "pay_dep", amountCents: 18900, status: "PAID" },
+            { id: "pay_bal", amountCents: 21000, status: "PENDING" },
+          ],
+        },
+      }),
+    ]);
+    expect(row.discountCents).toBe(-5000);
+    expect(row.editor.depositPaidCents).toBe(18900);
+    expect(row.editor.invoice.lines).toEqual([
+      {
+        kind: "LABOR",
+        description: "HVAC labor",
+        quantity: "2",
+        unitCents: 11000,
+        amountCents: 22000,
+      },
+      {
+        kind: "DISCOUNT",
+        description: "Goodwill",
+        quantity: "1",
+        unitCents: -5000,
+        amountCents: -5000,
+      },
+    ]);
   });
 
   it("falls back to the booking customer name and skips paid invoices", () => {

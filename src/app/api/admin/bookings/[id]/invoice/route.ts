@@ -18,6 +18,7 @@ export async function PATCH(
   let body: {
     labor?: { description?: string; hours?: string; rate?: string }[];
     materials?: { description?: string; cost?: string }[];
+    discounts?: { description?: string; amount?: string }[];
     note?: string;
   };
   try {

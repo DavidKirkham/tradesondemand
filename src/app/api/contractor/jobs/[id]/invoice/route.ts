@@ -5,6 +5,7 @@ import { getApprovedContractorFromCookie } from "@/lib/contractor-auth";
 import {
   contractorCanInvoiceJob,
   depositCreditCents,
+  preserveDiscountLines,
   totalsFromLines,
   validateInvoicePayload,
 } from "@/lib/invoice";
@@ -85,7 +86,7 @@ async function saveContractorInvoice(
 
   const existing = await prisma.invoice.findUnique({
     where: { bookingId: id },
-    include: { payment: true },
+    include: { payment: true, lines: { orderBy: { sortOrder: "asc" } } },
   });
   const locked = invoiceLockedReason(existing);
   if (locked) {
@@ -96,14 +97,15 @@ async function saveContractorInvoice(
   const alreadySent = existing?.status === "SENT";
   const publish = send || alreadySent;
   const depositPaidCents = depositCreditCents(booking.payments, existing?.paymentId);
-  const totals = totalsFromLines(parsed.lines, depositPaidCents);
+  const lines = preserveDiscountLines(parsed.lines, existing?.lines ?? []);
+  const totals = totalsFromLines(lines, depositPaidCents);
 
   const invoice = await prisma.$transaction(async (tx) => {
     const updated = await persistInvoiceEdits(tx, {
       booking,
       existing,
       contractorId: contractor.id,
-      lines: parsed.lines,
+      lines,
       totals,
       note: parsed.note,
       publish,

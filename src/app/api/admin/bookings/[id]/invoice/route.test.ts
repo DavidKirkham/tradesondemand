@@ -64,6 +64,7 @@ describe("PATCH /api/admin/bookings/[id]/invoice", () => {
     const body = {
       labor: [{ description: "HVAC labor", hours: "2", rate: "110" }],
       materials: [{ description: "Blower motor", cost: "169" }],
+      discounts: [{ description: "Goodwill", amount: "50" }],
     };
     const response = await PATCH(
       new Request("http://tod.test/api/admin/bookings/job_1/invoice", {

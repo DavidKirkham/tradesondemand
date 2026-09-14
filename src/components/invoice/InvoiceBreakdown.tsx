@@ -58,6 +58,8 @@ export function InvoiceBreakdown({
   const displaySubtotal = variant === "customer" ? customerTotals.subtotalCents : subtotalCents;
   const labor = displayLines.filter((line) => line.kind === "LABOR");
   const materials = displayLines.filter((line) => line.kind === "MATERIAL");
+  const discounts = displayLines.filter((line) => line.kind === "DISCOUNT");
+  const discountCents = discounts.reduce((sum, line) => sum + line.amountCents, 0);
 
   return (
     <div className="space-y-3 text-sm text-navy">
@@ -99,9 +101,24 @@ export function InvoiceBreakdown({
         </div>
       ) : null}
 
+      {discounts.length > 0 ? (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Discount</p>
+          <ul className="mt-1 space-y-1">
+            {discounts.map((line, index) => (
+              <li key={line.id ?? `discount-${index}`} className="flex justify-between gap-3">
+                <span>{line.description}</span>
+                <span className="font-semibold">{formatUsd(line.amountCents)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <dl className="space-y-1 border-t border-line pt-2">
         {displayLabor > 0 ? <TotalRow label="Labor" value={displayLabor} /> : null}
         {displayMaterials > 0 ? <TotalRow label="Materials" value={displayMaterials} /> : null}
+        {discountCents !== 0 ? <TotalRow label="Discount" value={discountCents} /> : null}
         <TotalRow
           label={variant === "customer" ? "Subtotal" : "Shop subtotal"}
           value={displaySubtotal}

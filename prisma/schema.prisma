@@ -181,7 +181,7 @@ model InvoiceLine {
   id          String  @id @default(cuid())
   invoiceId   String
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  kind        String
+  kind        String  // LABOR | MATERIAL | DISCOUNT (shop-side; DISCOUNT amountCents is negative)
   description String
   quantity    String
   unitCents   Int

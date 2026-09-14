@@ -7,6 +7,7 @@ import { parseResponseJson } from "@/lib/http";
 import {
   invoiceIsLocked,
   linesToFormState,
+  parseDiscountRow,
   parseLaborRow,
   parseMaterialRow,
   totalsFromLines,
@@ -16,9 +17,11 @@ import { centsToInput, formatUsd } from "@/lib/money";
 
 type LaborRow = { description: string; hours: string; rate: string };
 type MaterialRow = { description: string; cost: string };
+type DiscountRow = { description: string; amount: string };
 
 const emptyLabor = (rate: string): LaborRow => ({ description: "Labor", hours: "", rate });
 const emptyMaterial = (): MaterialRow => ({ description: "", cost: "" });
+const emptyDiscount = (): DiscountRow => ({ description: "", amount: "" });
 
 export type AdminInvoiceEditorInvoice = {
   publicId: string;
@@ -39,17 +42,20 @@ export function AdminInvoiceEditor({
   depositPaidCents,
   invoice,
   onCancel,
+  onSaved,
 }: {
   jobId: string;
   depositPaidCents: number;
   invoice: AdminInvoiceEditorInvoice;
   onCancel?: () => void;
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const initial = linesToFormState(invoice.lines);
   const defaultRate = centsToInput(invoice.lines.find((line) => line.kind === "LABOR")?.unitCents);
   const [labor, setLabor] = useState<LaborRow[]>(initial.labor);
   const [materials, setMaterials] = useState<MaterialRow[]>(initial.materials);
+  const [discounts, setDiscounts] = useState<DiscountRow[]>(initial.discounts);
   const [note, setNote] = useState(invoice.note ?? "");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,8 +71,12 @@ export function AdminInvoiceEditor({
       const parsed = parseMaterialRow(row);
       if (parsed.ok && "line" in parsed) lines.push(parsed.line);
     }
+    for (const row of discounts) {
+      const parsed = parseDiscountRow(row);
+      if (parsed.ok && "line" in parsed) lines.push(parsed.line);
+    }
     return { lines, totals: totalsFromLines(lines, depositPaidCents) };
-  }, [labor, materials, depositPaidCents]);
+  }, [labor, materials, discounts, depositPaidCents]);
 
   async function save() {
     setSaving(true);
@@ -74,7 +84,7 @@ export function AdminInvoiceEditor({
     const response = await fetch(`/api/admin/bookings/${encodeURIComponent(jobId)}/invoice`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ labor, materials, note: note.trim() || undefined }),
+      body: JSON.stringify({ labor, materials, discounts, note: note.trim() || undefined }),
     });
     const payload = await parseResponseJson<{ error?: string }>(response);
     setSaving(false);
@@ -84,6 +94,7 @@ export function AdminInvoiceEditor({
     }
     setMessage("Invoice saved. The customer balance and pay link use the marked-up amount due.");
     router.refresh();
+    onSaved?.();
   }
 
   if (locked) {
@@ -114,9 +125,9 @@ export function AdminInvoiceEditor({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">
-        Edit shop line items. TOD adds a 20% platform fee on the shop subtotal; the customer
-        Checkout amount is that marked-up total minus paid deposits. An open Stripe session is
-        dropped if the customer amount due changes.
+        Edit shop line items and optional shop discounts. TOD adds a 20% platform fee on the shop
+        subtotal after discounts; the customer Checkout amount is that marked-up total minus paid
+        deposits. An open Stripe session is dropped if the customer amount due changes.
       </p>
       {depositPaidCents > 0 ? (
         <p className="text-sm text-navy">Deposit already paid to TOD: {formatUsd(depositPaidCents)}</p>
@@ -205,6 +216,51 @@ export function AdminInvoiceEditor({
         </button>
       </div>
 
+      <div className="space-y-3 rounded-xl border border-ember/25 bg-ember/5 px-3 py-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ember">Shop discount</p>
+          <p className="mt-1 text-xs text-muted">
+            Off the shop subtotal before the 20% TOD markup. Enter the amount the shop is taking
+            off, not the customer price.
+          </p>
+        </div>
+        {discounts.map((row, index) => (
+          <div key={`discount-${index}`} className="grid gap-2 sm:grid-cols-[1fr_7rem_auto]">
+            <input
+              value={row.description}
+              onChange={(event) => updateDiscount(index, { description: event.target.value })}
+              placeholder="Goodwill, correction, coupon…"
+              className="h-11 rounded-xl border border-line bg-white px-3 text-sm"
+            />
+            <input
+              value={row.amount}
+              onChange={(event) => updateDiscount(index, { amount: event.target.value })}
+              inputMode="decimal"
+              placeholder="Amount"
+              className="h-11 rounded-xl border border-line bg-white px-3 text-sm"
+              aria-label="Shop discount amount"
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setDiscounts((rows) => rows.filter((_, rowIndex) => rowIndex !== index))
+              }
+              disabled={discounts.length === 1}
+              className="h-11 text-sm font-semibold text-muted disabled:opacity-40"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setDiscounts((rows) => [...rows, emptyDiscount()])}
+          className="text-sm font-semibold text-ember"
+        >
+          + Discount
+        </button>
+      </div>
+
       <input
         value={note}
         onChange={(event) => setNote(event.target.value)}
@@ -257,6 +313,12 @@ export function AdminInvoiceEditor({
 
   function updateMaterial(index: number, patch: Partial<MaterialRow>) {
     setMaterials((rows) =>
+      rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)),
+    );
+  }
+
+  function updateDiscount(index: number, patch: Partial<DiscountRow>) {
+    setDiscounts((rows) =>
       rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)),
     );
   }

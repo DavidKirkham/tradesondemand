@@ -9,6 +9,7 @@ import {
   linesToFormState,
   parseLaborRow,
   parseMaterialRow,
+  preserveDiscountLines,
   totalsFromLines,
   type InvoiceLineDraft,
 } from "@/lib/invoice";
@@ -68,8 +69,9 @@ export function ContractorInvoiceForm({
       const parsed = parseMaterialRow(row);
       if (parsed.ok && "line" in parsed) lines.push(parsed.line);
     }
-    return { lines, totals: totalsFromLines(lines, depositPaidCents) };
-  }, [labor, materials, depositPaidCents]);
+    const withDiscounts = preserveDiscountLines(lines, invoice?.lines ?? []);
+    return { lines: withDiscounts, totals: totalsFromLines(withDiscounts, depositPaidCents) };
+  }, [labor, materials, depositPaidCents, invoice?.lines]);
 
   async function submit(send: boolean) {
     setSaving(true);
