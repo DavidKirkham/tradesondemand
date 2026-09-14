@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isOpsAuthenticated } from "@/lib/ops-auth";
 import { isPaymentStatus } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
+import { markInvoicePaidForPayment } from "@/lib/stripe-webhook";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,9 @@ export async function PATCH(
       where: { id },
       data: { status, note: body.note?.trim() || undefined },
     });
+    if (status === "PAID") {
+      await markInvoicePaidForPayment(payment.id);
+    }
     return NextResponse.json({ payment });
   } catch {
     return NextResponse.json({ error: "Payment not found." }, { status: 404 });

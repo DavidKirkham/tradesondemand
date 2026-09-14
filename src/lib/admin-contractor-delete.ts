@@ -103,7 +103,8 @@ class ContractorDeleteConflict extends Error {
  * or unpaid work is not silently unassigned. Completed and cancelled jobs
  * stay on the books with contractorId set to null. Time & materials invoices
  * stay on those jobs with Invoice.contractorId set to null (same history
- * rule; the FK is ON DELETE SET NULL). Password-reset rows and Web Push
+ * rule; the FK is ON DELETE SET NULL). ContractorPayout rows stay on those
+ * jobs with contractorId SET NULL. Password-reset rows and Web Push
  * subscriptions cascade from Prisma. Payments stay on the booking.
  */
 export async function deleteAdminContractor(

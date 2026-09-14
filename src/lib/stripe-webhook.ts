@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { createPaymentPublicId } from "./customer";
+import { ensureContractorPayoutsForPayment } from "./contractor-connect";
 import { isMissingInvoiceModel } from "./invoice-columns";
 import { prisma } from "./prisma";
 import { sessionPaymentIntentId } from "./stripe-checkout";
@@ -31,6 +32,7 @@ export async function markInvoicePaidForPayment(paymentId: string) {
       where: { paymentId, status: { not: "PAID" } },
       data: { status: "PAID", paidAt: new Date() },
     });
+    await ensureContractorPayoutsForPayment(paymentId);
   } catch (error) {
     if (!isMissingInvoiceModel(error)) throw error;
   }

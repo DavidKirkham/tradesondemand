@@ -7,12 +7,14 @@ import {
   resetStripeClientForTests,
   STRIPE_CHECKOUT_UNAVAILABLE_CUSTOMER_MESSAGE,
   stripeMissingKeysMessage,
+  appOriginFromHeaders,
 } from "./stripe";
 
 describe("stripe env helpers", () => {
   afterEach(() => {
     delete process.env.STRIPE_SECRET_KEY;
     delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    delete process.env.NEXT_PUBLIC_APP_URL;
     resetStripeClientForTests();
   });
 
@@ -38,6 +40,15 @@ describe("stripe env helpers", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_xxx";
     resetStripeClientForTests();
     expect(isStripeCheckoutConfigured()).toBe(false);
+  });
+
+  it("prefers NEXT_PUBLIC_APP_URL for Connect return origins", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://todkc.com/";
+    expect(appOriginFromHeaders(new Headers({ host: "localhost:3000" }))).toBe("https://todkc.com");
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    expect(appOriginFromHeaders(new Headers({ host: "localhost:3000", "x-forwarded-proto": "http" }))).toBe(
+      "http://localhost:3000",
+    );
   });
 });
 

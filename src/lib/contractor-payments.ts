@@ -1,5 +1,5 @@
 export const CONTRACTOR_PAYOUT_COPY =
-  "Customers pay Trades on Demand. This list is what the customer paid TOD on your jobs — not a bank transfer. TOD pays your shop separately. Stripe Connect payouts are not in this version.";
+  "Customers pay Trades on Demand. Customer deposits and balances below are what TOD collected — not your shop payout. Shop earnings (invoice subtotal, no 20% markup) transfer to your Stripe Express balance after the invoice is paid.";
 
 export type ContractorPaymentLike = {
   amountCents: number;

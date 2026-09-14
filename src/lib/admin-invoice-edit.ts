@@ -1,5 +1,6 @@
 import { depositCreditCents, totalsFromLines, validateInvoicePayload } from "./invoice";
 import { isMissingInvoiceMarkupColumn } from "./invoice-columns";
+import { ensureContractorPayoutForPaidInvoice } from "./contractor-connect";
 import {
   invoiceLockedReason,
   persistInvoiceEdits,
@@ -101,6 +102,10 @@ export async function saveAdminInvoice(
     jobStatus: job.status,
     eventNote: `Invoice ${existing.publicId} updated by admin — customer owes TOD ${formatUsd(totals.amountDueCents)}`,
   });
+
+  if (invoice.status === "PAID") {
+    await ensureContractorPayoutForPaidInvoice(invoice.id);
+  }
 
   return { ok: true, invoice };
 }

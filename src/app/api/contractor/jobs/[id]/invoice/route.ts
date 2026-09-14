@@ -10,6 +10,7 @@ import {
 } from "@/lib/invoice";
 import { isMissingInvoiceMarkupColumn, isMissingInvoiceModel } from "@/lib/invoice-columns";
 import { invoiceLockedReason, persistInvoiceEdits } from "@/lib/invoice-persist";
+import { ensureContractorPayoutForPaidInvoice } from "@/lib/contractor-connect";
 import { prisma } from "@/lib/prisma";
 import { appOriginFromRequest } from "@/lib/stripe";
 import { buildInvoiceSms, sendCustomerSms } from "@/lib/sms";
@@ -135,6 +136,10 @@ async function saveContractorInvoice(
 
     return updated;
   });
+
+  if (invoice.status === "PAID") {
+    await ensureContractorPayoutForPaidInvoice(invoice.id);
+  }
 
   let sms:
     | { status: string; body: string | null; error: string | null; persistSkipped?: boolean }
